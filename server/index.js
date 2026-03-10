@@ -34,8 +34,27 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+const rateLimit = require('express-rate-limit');
+
+// General API Rate Limiter (100 requests per 15 minutes per IP)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Stricter Auth Rate Limiter (50 requests per 15 minutes)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: 'Too many authentication attempts, please try again later',
+});
+
 // Routes
-app.use('/auth', require('./routes/auth'));
+app.use('/auth', authLimiter, require('./routes/auth'));
+app.use('/api/', apiLimiter); // Apply general limiter to all /api routes
 app.use('/api/leaderboards', require('./routes/leaderboards'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/admin', require('./routes/admin'));
