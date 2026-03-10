@@ -52,7 +52,7 @@ const authLimiter = rateLimit({
     message: 'Too many authentication attempts, please try again later',
 });
 
-// Routes
+// App routes
 app.use('/auth', authLimiter, require('./routes/auth'));
 app.use('/api/', apiLimiter); // Apply general limiter to all /api routes
 app.use('/api/leaderboards', require('./routes/leaderboards'));
@@ -60,6 +60,11 @@ app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/feedback', require('./routes/feedback'));
+
+// Health check endpoints
+app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() }));
+app.get('/test', (req, res) => res.status(200).json({ message: 'API is working correctly' }));
+app.get('/', (req, res) => res.status(200).send('API Server is running'));
 
 // Connect to DB
 connectDB();
