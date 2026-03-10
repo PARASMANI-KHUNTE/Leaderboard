@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 require('dotenv').config();
 require('./config/passport');
 const connectDB = require('./config/db');
@@ -20,17 +21,32 @@ const io = socketIo(server, {
 
 app.set('socketio', io);
 
+// Trust proxy to resolve HTTPS correctly behind Render's load balancer
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({
     origin: process.env.CLIENT_URL,
     credentials: true
 }));
 app.use(express.json());
+
+// Session Configuration with connect-mongo
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        collectionName: 'sessions', // Optional, default is 'sessions'
+        ttl: 14 * 24 * 60 * 60, // 14 days
+        autoRemove: 'native' // Default
+    }),
+    cookie: {
+        maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+    }
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
