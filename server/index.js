@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('connect-mongo').default || require('connect-mongo');
 require('dotenv').config();
 require('./config/passport');
 const connectDB = require('./config/db');
