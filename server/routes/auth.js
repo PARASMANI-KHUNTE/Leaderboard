@@ -44,10 +44,14 @@ router.delete('/delete-account', auth, async (req, res) => {
         // 1. Remove all entries by user
         await LeaderboardEntry.deleteMany({ userId });
 
-        // 2. Pull user's ID from all likedBy arrays
+        // 2. Pull user's ID from all likedBy and dislikedBy arrays
         await LeaderboardEntry.updateMany(
             { likedBy: userId },
             { $pull: { likedBy: userId } }
+        );
+        await LeaderboardEntry.updateMany(
+            { dislikedBy: userId },
+            { $pull: { dislikedBy: userId } }
         );
 
         // 3. Remove user's reports and feedback

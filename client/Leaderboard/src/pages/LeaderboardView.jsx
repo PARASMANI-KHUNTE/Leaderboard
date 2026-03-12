@@ -74,8 +74,8 @@ const LeaderboardView = () => {
                     }
                 });
 
-                socket.on(`reactionUpdate:${lbRes.data._id}`, ({ entryId, hearts, likedBy }) => {
-                    setEntries(prev => prev.map(e => e._id === entryId ? { ...e, hearts, likedBy } : e));
+                socket.on(`reactionUpdate:${lbRes.data._id}`, ({ entryId, hearts, likedBy, dislikes, dislikedBy }) => {
+                    setEntries(prev => prev.map(e => e._id === entryId ? { ...e, hearts, likedBy, dislikes, dislikedBy } : e));
                 });
 
 

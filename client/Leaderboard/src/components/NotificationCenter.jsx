@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Heart, MessageSquare, Flag, X, Trash2 } from 'lucide-react';
+import { Bell, Heart, MessageSquare, Flag, X, Trash2, ThumbsDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
@@ -68,6 +68,7 @@ const NotificationCenter = () => {
 
     const icons = {
         heart: <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />,
+        'thumbs-down': <ThumbsDown className="w-4 h-4 text-indigo-500 fill-indigo-500" />,
         comment: <MessageSquare className="w-4 h-4 text-indigo-400" />,
         report: <Flag className="w-4 h-4 text-red-500" />,
         info: <Bell className="w-4 h-4 text-white" />
@@ -95,7 +96,7 @@ const NotificationCenter = () => {
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute right-0 mt-3 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-[1001] overflow-hidden glass"
+                            className="absolute right-0 mt-3 w-80 bg-slate-950/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-[1001] overflow-hidden"
                         >
                             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/2">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Notifications</h3>

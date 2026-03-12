@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageSquare, Bell, X } from 'lucide-react';
+import { Heart, MessageSquare, Bell, X, ThumbsDown } from 'lucide-react';
 
 const ToastContext = createContext();
 
@@ -30,6 +30,7 @@ export const ToastProvider = ({ children }) => {
 
     const icons = {
         heart: <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />,
+        'thumbs-down': <ThumbsDown className="w-4 h-4 text-indigo-500 fill-indigo-500" />,
         comment: <MessageSquare className="w-4 h-4 text-indigo-400" />,
         info: <Bell className="w-4 h-4 text-white" />
     };
@@ -45,7 +46,7 @@ export const ToastProvider = ({ children }) => {
                             initial={{ opacity: 0, x: 50, scale: 0.9 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-                            className="pointer-events-auto flex items-center gap-4 bg-slate-900 border border-white/10 p-4 rounded-2xl shadow-2xl min-w-[300px] max-w-sm glass"
+                            className="pointer-events-auto flex items-center gap-4 bg-slate-950/95 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl shadow-2xl min-w-[300px] max-w-sm"
                         >
                             <div className="p-2.5 bg-white/5 rounded-xl shadow-inner">
                                 {icons[toast.type] || icons.info}

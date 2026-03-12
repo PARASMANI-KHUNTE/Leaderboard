@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Medal, Crown, Edit2, Trash2, Heart, MessageSquare, Flag, User } from 'lucide-react';
+import { Medal, Crown, Edit2, Trash2, Heart, ThumbsDown, MessageSquare, Flag, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth, useModal } from '../App';
 import axios from 'axios';
@@ -59,12 +59,57 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
     const handleReact = async (id, e) => {
         e.stopPropagation();
         if (!user) return showAlert('Login Required', 'Please login to react');
+        
+        // Optimistic Update
+        const targetEntry = entries.find(entry => entry._id === id);
+        if (targetEntry) {
+            const hasLiked = targetEntry.likedBy?.includes(user.id);
+            const hasDisliked = targetEntry.dislikedBy?.includes(user.id);
+            
+            // Replicate server mutual exclusion logic locally
+            const simulatedLikedBy = hasLiked ? targetEntry.likedBy.filter(uId => uId !== user.id) : [...(targetEntry.likedBy || []), user.id];
+            const simulatedDislikedBy = hasDisliked ? targetEntry.dislikedBy.filter(uId => uId !== user.id) : [...(targetEntry.dislikedBy || [])];
+            
+            // We temporarily mutate just the local prop to make it *feel* instant. 
+            // In a strict React app with parent state, we'd fire an `onUpdate` prop.
+            // Since `LeaderboardView` listens to the socket, the true state will arrive momentarily.
+            targetEntry.likedBy = simulatedLikedBy;
+            targetEntry.dislikedBy = simulatedDislikedBy;
+        }
+
         try {
             await axios.post(`${API_URL}/api/leaderboard/react/${id}`, {}, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
         } catch (err) {
             console.error('Failed to react');
+        }
+    };
+
+    const handleDislike = async (id, e) => {
+        e.stopPropagation();
+        if (!user) return showAlert('Login Required', 'Please login to react');
+        
+        // Optimistic Update
+        const targetEntry = entries.find(entry => entry._id === id);
+        if (targetEntry) {
+            const hasLiked = targetEntry.likedBy?.includes(user.id);
+            const hasDisliked = targetEntry.dislikedBy?.includes(user.id);
+            
+            // Replicate server mutual exclusion logic locally
+            const simulatedLikedBy = hasLiked ? targetEntry.likedBy.filter(uId => uId !== user.id) : [...(targetEntry.likedBy || [])];
+            const simulatedDislikedBy = hasDisliked ? targetEntry.dislikedBy.filter(uId => uId !== user.id) : [...(targetEntry.dislikedBy || []), user.id];
+            
+            targetEntry.likedBy = simulatedLikedBy;
+            targetEntry.dislikedBy = simulatedDislikedBy;
+        }
+
+        try {
+            await axios.post(`${API_URL}/api/leaderboard/dislike/${id}`, {}, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+        } catch (err) {
+            console.error('Failed to dislike');
         }
     };
 
@@ -185,6 +230,10 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                                         <button onClick={(e) => handleReact(entry._id, e)} className="flex items-center gap-1.5 group/heart">
                                             <Heart className={`w-4 h-4 transition-all ${entry.likedBy?.includes(user?.id) ? 'fill-red-500 text-red-500 scale-110' : 'text-slate-500 group-hover/heart:text-red-400'}`} />
                                             <span className="text-xs font-bold text-slate-500 font-mono">{entry.likedBy?.length || 0}</span>
+                                        </button>
+                                        <button onClick={(e) => handleDislike(entry._id, e)} className="flex items-center gap-1.5 group/dislike">
+                                            <ThumbsDown className={`w-4 h-4 transition-all ${entry.dislikedBy?.includes(user?.id) ? 'fill-indigo-500 text-indigo-500 scale-110' : 'text-slate-500 group-hover/dislike:text-indigo-400'}`} />
+                                            <span className="text-xs font-bold text-slate-500 font-mono">{entry.dislikedBy?.length || 0}</span>
                                         </button>
                                     </div>
                                 </td>

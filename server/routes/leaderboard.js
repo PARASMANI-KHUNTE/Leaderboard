@@ -137,12 +137,21 @@ router.post('/react/:id', auth, async (req, res) => {
         if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
         const userId = req.user.id;
-        const index = entry.likedBy.indexOf(userId);
+        if (!entry.likedBy) entry.likedBy = [];
+        if (!entry.dislikedBy) entry.dislikedBy = [];
+        const likeIndex = entry.likedBy.indexOf(userId);
+        const dislikeIndex = entry.dislikedBy.indexOf(userId);
 
         let isLiked = false;
-        if (index > -1) {
+
+        // If currently disliked, remove the dislike
+        if (dislikeIndex > -1) {
+            entry.dislikedBy.splice(dislikeIndex, 1);
+        }
+
+        if (likeIndex > -1) {
             // Unlike
-            entry.likedBy.splice(index, 1);
+            entry.likedBy.splice(likeIndex, 1);
         } else {
             // Like
             entry.likedBy.push(userId);
@@ -167,10 +176,70 @@ router.post('/react/:id', auth, async (req, res) => {
         io.emit(`reactionUpdate:${entry.leaderboardId}`, {
             entryId: entry._id,
             likedBy: entry.likedBy,
-            hearts: entry.likedBy.length
+            hearts: entry.likedBy.length,
+            dislikedBy: entry.dislikedBy,
+            dislikes: entry.dislikedBy.length
         });
 
-        res.json({ hearts: entry.likedBy.length, isLiked });
+        res.json({ hearts: entry.likedBy.length, isLiked, dislikes: entry.dislikedBy.length });
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Add reaction (ThumbsDown) - Toggles Dislike
+router.post('/dislike/:id', auth, async (req, res) => {
+    try {
+        const entry = await LeaderboardEntry.findById(req.params.id);
+        if (!entry) return res.status(404).json({ message: 'Entry not found' });
+
+        const userId = req.user.id;
+        if (!entry.likedBy) entry.likedBy = [];
+        if (!entry.dislikedBy) entry.dislikedBy = [];
+        const likeIndex = entry.likedBy.indexOf(userId);
+        const dislikeIndex = entry.dislikedBy.indexOf(userId);
+
+        let isDisliked = false;
+
+        // If currently liked, remove the like
+        if (likeIndex > -1) {
+            entry.likedBy.splice(likeIndex, 1);
+        }
+
+        if (dislikeIndex > -1) {
+            // Undislike
+            entry.dislikedBy.splice(dislikeIndex, 1);
+        } else {
+            // Dislike
+            entry.dislikedBy.push(userId);
+            isDisliked = true;
+
+            // Notify on dislike
+            const io = req.app.get('socketio');
+            const user = await User.findById(userId);
+            const Leaderboard = require('../models/LeaderboardCollection');
+            const leaderboard = await Leaderboard.findById(entry.leaderboardId);
+            
+            io.to(`user:${entry.userId}`).emit('globalNotification', {
+                type: 'thumbs-down', // Frontend will pick an icon
+                message: `${user.displayName} disliked your card.`,
+                entryId: entry._id,
+                target: `/lb/${leaderboard.slug}`
+            });
+        }
+
+        await entry.save();
+
+        const io = req.app.get('socketio');
+        io.emit(`reactionUpdate:${entry.leaderboardId}`, {
+            entryId: entry._id,
+            likedBy: entry.likedBy,
+            hearts: entry.likedBy.length,
+            dislikedBy: entry.dislikedBy,
+            dislikes: entry.dislikedBy.length
+        });
+
+        res.json({ hearts: entry.likedBy.length, dislikes: entry.dislikedBy.length, isDisliked });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
