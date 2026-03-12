@@ -7,7 +7,7 @@ const { auth, admin } = require('../middleware/auth');
 // Get all reports
 router.get('/reports', auth, admin, async (req, res) => {
     try {
-        const reports = await Report.find()
+        const reports = await Report.find({ status: 'pending' })
             .populate('entryId')
             .populate('reporterId', 'displayName email')
             .sort({ createdAt: -1 });
