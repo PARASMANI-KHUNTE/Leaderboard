@@ -3,7 +3,7 @@ import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
-import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff } from 'lucide-react';
+import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, ExternalLink, Github, Linkedin, Mail, Globe, Zap, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { io } from 'socket.io-client';
 
@@ -101,7 +101,8 @@ const Landing = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+        <div className="min-h-screen flex flex-col justify-between">
+            <div className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
             <div className="text-center space-y-4">
                 <div className="flex flex-col items-center justify-center gap-2 mb-4">
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full animate-pulse">
@@ -116,15 +117,43 @@ const Landing = () => {
                 <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium">
                     The ultimate student ranking platform. Create, share, and track performance in complete real-time.
                 </p>
-                {user && (
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Create New Board
-                    </button>
-                )}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mt-6">
+                        <a 
+                            href="/EliteLeaderboard.apk"
+                            download="EliteLeaderboard.apk"
+                            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-2xl text-white hover:from-indigo-400 hover:to-indigo-600 transition-all duration-300 shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_50px_rgba(99,102,241,0.5)] active:scale-95 border border-indigo-400/30 overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                            <Download className="w-6 h-6 relative z-10 group-hover:-translate-y-1 transition-transform duration-300" />
+                            <div className="relative z-10 flex flex-col items-start leading-none text-left">
+                                <span className="text-[10px] uppercase tracking-wider text-indigo-200 font-bold mb-1">Android App</span>
+                                <span className="font-black text-lg tracking-wide">Direct Download</span>
+                            </div>
+                        </a>
+                        <a 
+                            href="https://expo.dev/accounts/parasmani/projects/eliteboards-mobile/builds/0c356e6a-4704-4e0e-ae41-990293c9052d"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 px-8 py-4 bg-slate-800/80 backdrop-blur-md rounded-2xl text-slate-300 hover:text-white transition-all duration-300 hover:bg-slate-700/80 shadow-xl active:scale-95 border border-slate-700 hover:border-indigo-500/50"
+                        >
+                            <ExternalLink className="w-6 h-6 text-slate-400 group-hover:text-indigo-400 transition-colors duration-300" />
+                            <div className="flex flex-col items-start leading-none text-left">
+                                <span className="text-[10px] uppercase tracking-wider text-slate-500 group-hover:text-indigo-300 font-bold mb-1 transition-colors duration-300">Alternative</span>
+                                <span className="font-black text-lg tracking-wide">Expo Build</span>
+                            </div>
+                        </a>
+                    </div>
+                    {user && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 text-white"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Create New Board
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -196,6 +225,44 @@ const Landing = () => {
                 )}
             </div>
 
+            {/* About Section */}
+            <div className="pt-20 pb-10 border-t border-white/10 mt-20">
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl sm:text-5xl font-black text-white uppercase font-mono tracking-tight mb-4">How <span className="text-indigo-500">EliteBoards</span> Works</h2>
+                    <p className="text-slate-400 max-w-2xl mx-auto text-lg">Three simple steps to gamify your community and track performance securely.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
+                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                            <Zap className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-3">1. Create a Board</h3>
+                        <p className="text-slate-400 leading-relaxed text-sm">
+                            Instantly generate a real-time leaderboard for your batch, classroom, or competition. Custom links are generated in seconds.
+                        </p>
+                    </div>
+                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
+                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                            <Users className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-3">2. Share & Compete</h3>
+                        <p className="text-slate-400 leading-relaxed text-sm">
+                            Share the unique link with participants. Users can seamlessly submit their scores or metrics through the web or our mobile app.
+                        </p>
+                    </div>
+                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
+                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                            <Activity className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-3">3. Track in Real-time</h3>
+                        <p className="text-slate-400 leading-relaxed text-sm">
+                            Watch the rankings update live. No page refreshes needed. Perfect for hackathons, quizzes, and live gamified learning.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {showCreateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
                     <motion.div
@@ -236,6 +303,42 @@ const Landing = () => {
                     </motion.div>
                 </div>
             )}
+            </div>
+
+            {/* Footer */}
+            <footer className="w-full border-t border-white/5 bg-[#020617]/50 pt-16 pb-8 mt-auto backdrop-blur-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
+                        <div className="flex flex-col items-center md:items-start gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="bg-gradient-to-r from-white via-indigo-200 to-slate-400 bg-clip-text text-transparent uppercase font-mono italic text-2xl font-black">Elite</span>
+                                <span className="text-indigo-500 text-glow uppercase font-mono text-2xl font-black">Boards</span>
+                            </div>
+                            <p className="text-slate-400 text-sm max-w-sm text-center md:text-left mt-2 leading-relaxed">Empowering student communities with real-time competitive ranking systems.</p>
+                        </div>
+                        <div className="flex flex-col items-center md:items-end gap-4">
+                            <span className="text-slate-600 font-bold uppercase tracking-widest text-xs">Developed by</span>
+                            <div className="flex items-center gap-4">
+                                <a href="https://github.com/PARASMANI-KHUNTE" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="GitHub">
+                                    <Github className="w-5 h-5" />
+                                </a>
+                                <a href="https://www.linkedin.com/in/parasmani-khunte-330488228/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-indigo-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="LinkedIn">
+                                    <Linkedin className="w-5 h-5" />
+                                </a>
+                                <a href="mailto:parasmanikhunte@gmail.com" className="text-slate-400 hover:text-teal-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="Email">
+                                    <Mail className="w-5 h-5" />
+                                </a>
+                                <a href="https://parasmanikhunte.onrender.com/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="Portfolio">
+                                    <Globe className="w-5 h-5" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-center text-slate-500 font-mono text-xs border-t border-white/5 pt-8">
+                        <p>&copy; {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</p>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 };
