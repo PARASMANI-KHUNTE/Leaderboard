@@ -13,7 +13,8 @@
       "backgroundColor": "#0b1020"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/83fb6e86-1c2f-49cb-aaf7-d3193421ba54"
     },
     "extra": {
       "API_URL": "https://leaderboard-backend-3pek.onrender.com",
@@ -42,6 +43,9 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser"
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
