@@ -9,7 +9,6 @@ router.get('/google',
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
         passport.authenticate('google', {
             scope: ['profile', 'email'],
-            // Included in the OAuth callback as `req.query.state`.
             state: platform,
         })(req, res, next);
     });
