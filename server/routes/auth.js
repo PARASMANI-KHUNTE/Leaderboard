@@ -22,6 +22,9 @@ router.get('/google',
         const callbackURL =
             process.env.GOOGLE_CALLBACK_URL ||
             `${safeProto}://${host}/auth/google/callback`;
+        
+        console.log('[OAuth] Init - proto:', proto, 'host:', host, 'safeProto:', safeProto, 'callbackURL:', callbackURL, 'GOOGLE_CALLBACK_URL env:', process.env.GOOGLE_CALLBACK_URL);
+        
         passport.authenticate('google', {
             scope: ['profile', 'email'],
             callbackURL,

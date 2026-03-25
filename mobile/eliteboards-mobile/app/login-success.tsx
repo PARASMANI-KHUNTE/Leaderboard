@@ -13,8 +13,13 @@ export default function LoginSuccessScreen() {
   useEffect(() => {
     if (authLoading) return;
     const code = params?.code;
+    
+    console.log('[LoginSuccess] params:', JSON.stringify(params));
+    console.log('[LoginSuccess] code:', code);
+    
     if (!code) {
-      setError('Missing login code.');
+      console.log('[LoginSuccess] No code found in params');
+      setError('Missing login code. Deep link may not have been received.');
       return;
     }
 
@@ -23,12 +28,15 @@ export default function LoginSuccessScreen() {
       try {
         setError(null);
         setStatus('exchanging');
+        console.log('[LoginSuccess] Exchanging code...');
         await exchangeCodeAndSignIn(code);
         if (cancelled) return;
+        console.log('[LoginSuccess] Exchange successful, navigating to home');
         setStatus('done');
         router.replace('/');
       } catch (e: any) {
         if (cancelled) return;
+        console.log('[LoginSuccess] Exchange failed:', e?.message);
         setError(e?.message ?? 'Login failed');
         setStatus('idle');
       }

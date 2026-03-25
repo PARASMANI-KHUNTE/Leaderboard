@@ -88,6 +88,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   const exchangeCodeAndSignIn = useCallback(
     async (code: string) => {
+      console.log('[Auth] Exchanging code at:', `${API_URL}/api/auth/exchange`);
+      console.log('[Auth] Code length:', code.length);
       const res = await axios.post(
         `${API_URL}/api/auth/exchange`,
         { code },
@@ -102,9 +104,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         throw new Error('Exchange did not return a token');
       }
 
+      console.log('[Auth] Token received, storing...');
       await SecureStore.setItemAsync(TOKEN_KEY, nextToken);
       setToken(nextToken);
       await fetchProfile(nextToken);
+      console.log('[Auth] Login complete');
     },
     [fetchProfile]
   );
