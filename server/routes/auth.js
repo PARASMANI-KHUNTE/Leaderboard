@@ -20,16 +20,15 @@ router.get('/google',
         
         console.log('[OAuth] Init - proto:', proto, 'host:', host, 'safeProto:', safeProto, 'callbackURL:', callbackURL, 'GOOGLE_CALLBACK_URL env:', process.env.GOOGLE_CALLBACK_URL);
         
-        // Store the client's dynamic deep-link redirect URL in the session so the callback can use it.
-        // This allows both Expo Go (exp://) and standalone (eliteboards://) to work with the same server.
-        if (platform === 'mobile' && req.query.redirect) {
-            req.session.mobileRedirectUrl = req.query.redirect;
-        }
+        // Encode platform + mobile redirect URL into the state param.
+        // Google passes state back to the callback unchanged — reliable unlike sessions.
+        const statePayload = { platform, redirectUrl: req.query.redirect || null };
+        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
 
         passport.authenticate('google', {
             scope: ['profile', 'email'],
             callbackURL,
-            state: platform,
+            state,
         })(req, res, next);
     });
 
@@ -37,8 +36,21 @@ router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login' }),
     async (req, res) => {
         try {
-            const platform = req.query?.state === 'mobile' ? 'mobile' : 'web';
-            console.log(`[OAuth Callback] platform=${platform} user=${req.user?._id}`);
+            // Decode state payload (base64url JSON: { platform, redirectUrl })
+            // Falls back to legacy plain-text state for backwards compatibility.
+            let platform = 'web';
+            let mobileRedirectUrl = null;
+            try {
+                const stateRaw = req.query?.state || '';
+                const decoded = JSON.parse(Buffer.from(stateRaw, 'base64url').toString());
+                platform = decoded.platform || 'web';
+                mobileRedirectUrl = decoded.redirectUrl || null;
+            } catch {
+                // Legacy: state was just the platform string
+                platform = req.query?.state === 'mobile' ? 'mobile' : 'web';
+            }
+
+            console.log(`[OAuth Callback] platform=${platform} user=${req.user?._id} redirectUrl=${mobileRedirectUrl}`);
 
             // Web continues to use the existing token-in-URL flow for compatibility.
             if (platform !== 'mobile') {
@@ -59,12 +71,9 @@ router.get('/google/callback',
                 used: false,
             });
 
-            // Use the redirect URL the client sent (stored in the session during /auth/google).
-            // Falls back to the env var so existing standalone builds still work.
-            const deepLinkBase = req.session?.mobileRedirectUrl || process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
+            // Use client's dynamic redirect URL from state, fall back to env var for production standalone
+            const deepLinkBase = mobileRedirectUrl || process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
             console.log(`[OAuth Callback] Redirecting mobile user to deep link: ${deepLinkBase}`);
-            // Clear the stored redirect URL from the session
-            if (req.session?.mobileRedirectUrl) delete req.session.mobileRedirectUrl;
             return res.redirect(`${deepLinkBase}?code=${encodeURIComponent(oneTimeCode)}`);
         } catch (err) {
             console.error('[OAuth Callback ERROR]', err);
