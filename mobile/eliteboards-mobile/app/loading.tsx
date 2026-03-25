@@ -1,218 +1,364 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, Image, Dimensions } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-type StarSpec = {
+type Particle = {
   id: number;
-  leftPct: number;
-  topPct: number;
+  left: number;
+  top: number;
   size: number;
-  delayMs: number;
   duration: number;
+  delay: number;
 };
 
-const LOADING_MESSAGES = [
-  "INITIALIZING_QUANTUM_LEADERS...",
-  "SYNCING_REALTIME_ENGINES...",
-  "OPTIMIZING_PREMIUM_RANKINGS...",
-  "VERIFYING_SECURE_SESSIONS...",
-  "CALIBRATING_ELITE_METRICS...",
-  "LOADING_SUCCESS_PATTERNS...",
+const STATUS_MESSAGES = [
+  'INITIALIZING_SYSTEMS...',
+  'CONNECTING_TO_SERVERS...',
+  'LOADING_LEADERBOARDS...',
+  'SYNCING_REALTIME_DATA...',
+  'OPTIMIZING_RANKINGS...',
+  'ALMOST_READY...',
 ];
 
-function Star({ spec }: { spec: StarSpec }) {
+function Particle({ particle }: { particle: Particle }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
-    const animation = Animated.loop(
+    Animated.loop(
       Animated.sequence([
-        Animated.delay(spec.delayMs),
+        Animated.delay(particle.delay),
         Animated.parallel([
           Animated.timing(opacity, {
-            toValue: Math.random() * 0.7 + 0.3,
-            duration: spec.duration / 2,
+            toValue: 0.6,
+            duration: particle.duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
-          Animated.timing(scale, {
-            toValue: 1,
-            duration: spec.duration / 2,
+          Animated.timing(translateY, {
+            toValue: -20,
+            duration: particle.duration,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
         ]),
         Animated.parallel([
           Animated.timing(opacity, {
             toValue: 0,
-            duration: spec.duration / 2,
+            duration: particle.duration,
             useNativeDriver: true,
           }),
-          Animated.timing(scale, {
-            toValue: 0,
-            duration: spec.duration / 2,
+          Animated.timing(translateY, {
+            toValue: 20,
+            duration: particle.duration,
             useNativeDriver: true,
           }),
         ]),
       ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [spec.duration, spec.delayMs]);
+    ).start();
+  }, [particle]);
 
   return (
     <Animated.View
       style={[
-        styles.star,
+        styles.particle,
         {
-          left: `${spec.leftPct}%`,
-          top: `${spec.topPct}%`,
-          width: spec.size,
-          height: spec.size,
+          left: particle.left,
+          top: particle.top,
+          width: particle.size,
+          height: particle.size,
           opacity,
-          transform: [{ scale }],
+          transform: [{ translateY }],
         },
       ]}
-    >
-      <View style={[styles.starDot, { width: spec.size, height: spec.size }]} />
-    </Animated.View>
+    />
+  );
+}
+
+function LoadingDots() {
+  const [dots, setDots] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(d => (d + 1) % 4);
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <Text style={styles.loadingDots}>
+      {'.'.repeat(dots)}
+    </Text>
   );
 }
 
 export default function Loading() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.9)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0)).current;
+  const ringOpacity = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(30)).current;
+  const lineWidth = useRef(new Animated.Value(0)).current;
+  const shieldPulse = useRef(new Animated.Value(1)).current;
   
   const [msgIndex, setMsgIndex] = useState(0);
   const msgOpacity = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    // Initial entry animations
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(glowOpacity, {
-        toValue: 0.6,
-        duration: 1500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(progressWidth, {
-        toValue: 1,
-        duration: 4000,
-        easing: Easing.inOut(Easing.quad),
-        useNativeDriver: false, // width doesn't support native driver
-      }),
-    ]).start();
+  const particles = useMemo<Particle[]>(() => 
+    Array.from({ length: 25 }).map((_, i) => ({
+      id: i,
+      left: Math.random() * width,
+      top: height * 0.2 + Math.random() * (height * 0.5),
+      size: Math.random() * 4 + 2,
+      duration: Math.random() * 2000 + 2000,
+      delay: Math.random() * 3000,
+    })), 
+  []);
 
-    // Loop for "breathing" logo
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoScale, {
-          toValue: 1.05,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
+  useEffect(() => {
+    // Phase 1: Logo entrance
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
           useNativeDriver: true,
         }),
-        Animated.timing(logoScale, {
+        Animated.spring(logoScale, {
           toValue: 1,
-          duration: 2000,
-          easing: Easing.inOut(Easing.sin),
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ringScale, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(ringOpacity, {
+          toValue: 0.6,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Phase 2: Content reveal
+      Animated.parallel([
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 600,
+          delay: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: 0,
+          duration: 600,
+          delay: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(lineWidth, {
+          toValue: 1,
+          duration: 1200,
+          delay: 400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start();
+
+    // Glow pulse loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     ).start();
 
-    // Loop for changing messages
+    // Shield pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shieldPulse, {
+          toValue: 1.1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shieldPulse, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Message rotation
     const msgInterval = setInterval(() => {
       Animated.sequence([
-        Animated.timing(msgOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-        Animated.delay(100),
+        Animated.timing(msgOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
-        setMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-        Animated.timing(msgOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        setMsgIndex(prev => (prev + 1) % STATUS_MESSAGES.length);
+        Animated.timing(msgOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
       });
-    }, 2800);
+    }, 2000);
 
     return () => clearInterval(msgInterval);
   }, []);
 
-  const stars = useMemo<StarSpec[]>(() => 
-    Array.from({ length: 40 }).map((_, i) => ({
-      id: i,
-      leftPct: Math.random() * 100,
-      topPct: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      delayMs: Math.random() * 3000,
-      duration: Math.random() * 3000 + 2000,
-    })), 
-  []);
-
   return (
     <View style={styles.container}>
-      {/* Background Decor */}
-      <View style={StyleSheet.absoluteFill}>
-        {stars.map((s) => <Star key={s.id} spec={s} />)}
-      </View>
+      {/* Background gradient overlay */}
+      <View style={styles.bgGradient} />
+      
+      {/* Floating particles */}
+      {particles.map(p => (
+        <Particle key={p.id} particle={p} />
+      ))}
 
-      {/* Central Glow */}
-      <Animated.View 
+      {/* Animated rings */}
+      <Animated.View
         style={[
-          styles.radialGlow, 
-          { opacity: glowOpacity, transform: [{ scale: logoScale }] }
-        ]} 
+          styles.ring,
+          styles.ring1,
+          {
+            opacity: ringOpacity,
+            transform: [{ scale: ringScale }],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.ring,
+          styles.ring2,
+          {
+            opacity: Animated.multiply(ringOpacity, 0.5),
+            transform: [{ scale: Animated.multiply(ringScale, 1.3) }],
+          },
+        ]}
       />
 
-      {/* Content */}
+      {/* Main content */}
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Animated.View style={{ transform: [{ scale: logoScale }] }}>
-          <Image 
-            source={require('../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
+        {/* Logo container with glow */}
+        <Animated.View
+          style={[
+            styles.logoContainer,
+            {
+              opacity: logoOpacity,
+              transform: [{ scale: logoScale }],
+            },
+          ]}
+        >
+          {/* Glow effect */}
+          <Animated.View
+            style={[
+              styles.logoGlow,
+              {
+                opacity: Animated.multiply(glowAnim, 0.4),
+              },
+            ]}
           />
+          
+          {/* Shield badge */}
+          <Animated.View
+            style={[
+              styles.shieldBadge,
+              {
+                transform: [{ scale: shieldPulse }],
+              },
+            ]}
+          >
+            <Text style={styles.shieldEmoji}>🏆</Text>
+          </Animated.View>
         </Animated.View>
 
-        <View style={styles.textWrap}>
-          <Text style={styles.brandTitle}>EliteBoards</Text>
-          <Text style={styles.brandTagline}>PREMIUM ACADEMIC RANKINGS</Text>
-        </View>
+        {/* Brand text */}
+        <Animated.View
+          style={[
+            styles.textContainer,
+            {
+              opacity: contentOpacity,
+              transform: [{ translateY: contentTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.titleRow}>
+            <Text style={styles.titleElite}>Elite</Text>
+            <Text style={styles.titleBoards}>Boards</Text>
+          </View>
+          
+          <Text style={styles.tagline}>
+            Premium Academic Rankings
+          </Text>
 
-        {/* Progress System */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarBg}>
-            <Animated.View 
+          {/* Animated line */}
+          <View style={styles.lineContainer}>
+            <Animated.View
               style={[
-                styles.progressBarFill, 
-                { 
-                  width: progressWidth.interpolate({
+                styles.animatedLine,
+                {
+                  width: lineWidth.interpolate({
                     inputRange: [0, 1],
-                    outputRange: ['0%', '85%']
-                  }) 
-                }
-              ]} 
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
             />
           </View>
-          <Animated.Text style={[styles.statusText, { opacity: msgOpacity }]}>
-            {LOADING_MESSAGES[msgIndex]}
-          </Animated.Text>
-        </View>
+
+          {/* Status message */}
+          <View style={styles.statusContainer}>
+            <View style={styles.statusIndicator}>
+              <Animated.View style={[styles.statusDot, { opacity: glowAnim }]} />
+            </View>
+            <Animated.Text style={[styles.statusText, { opacity: msgOpacity }]}>
+              {STATUS_MESSAGES[msgIndex]}
+            </Animated.Text>
+            <LoadingDots />
+          </View>
+        </Animated.View>
       </Animated.View>
 
-      {/* Footer Branding */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>POWERED BY ELITEBOARD ARCHITECTURE</Text>
-        <Text style={styles.versionText}>V1.0.4-STABLE</Text>
-      </View>
+      {/* Bottom branding */}
+      <Animated.View
+        style={[
+          styles.footer,
+          { opacity: contentOpacity },
+        ]}
+      >
+        <View style={styles.footerBadge}>
+          <Text style={styles.footerText}>REAL-TIME SYSTEMS</Text>
+        </View>
+        <Text style={styles.versionText}>v2.0.4</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -220,99 +366,163 @@ export default function Loading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: '#0b1020',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radialGlow: {
+  bgGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(79, 70, 229, 0.03)',
+  },
+  particle: {
     position: 'absolute',
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: (width * 0.8) / 2,
-    backgroundColor: 'rgba(79, 70, 229, 0.15)',
-    shadowColor: '#4f46e5',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 100,
-    elevation: 20,
+    backgroundColor: '#818cf8',
+    borderRadius: 10,
+  },
+  ring: {
+    position: 'absolute',
+    width: width * 0.6,
+    height: width * 0.6,
+    borderRadius: (width * 0.6) / 2,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  ring1: {
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+  },
+  ring2: {
+    borderColor: 'rgba(99, 102, 241, 0.1)',
   },
   content: {
     alignItems: 'center',
     zIndex: 10,
   },
-  logo: {
-    width: 160,
-    height: 160,
-    marginBottom: 20,
-  },
-  textWrap: {
+  logoContainer: {
+    width: 140,
+    height: 140,
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'center',
+    marginBottom: 32,
   },
-  brandTitle: {
-    color: '#e2e8f0',
-    fontSize: 36,
+  logoGlow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 50,
+  },
+  shieldBadge: {
+    width: 120,
+    height: 120,
+    borderRadius: 30,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(99, 102, 241, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
+  },
+  shieldEmoji: {
+    fontSize: 60,
+  },
+  textContainer: {
+    alignItems: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  titleElite: {
+    color: '#c7d2fe',
+    fontSize: 44,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: -1,
+  },
+  titleBoards: {
+    color: '#6366f1',
+    fontSize: 44,
     fontWeight: '900',
     letterSpacing: -1,
-    textTransform: 'uppercase',
+    marginLeft: 4,
   },
-  brandTagline: {
-    color: 'rgba(99, 102, 241, 0.6)',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 4,
-    marginTop: 4,
+  tagline: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 3,
+    marginBottom: 24,
   },
-  progressContainer: {
-    width: width * 0.7,
-    alignItems: 'center',
-  },
-  progressBarBg: {
-    width: '100%',
-    height: 4,
+  lineContainer: {
+    width: 200,
+    height: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 2,
+    borderRadius: 1,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 24,
   },
-  progressBarFill: {
+  animatedLine: {
     height: '100%',
     backgroundColor: '#6366f1',
-    borderRadius: 2,
+    borderRadius: 1,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#22c55e',
+    overflow: 'hidden',
+  },
+  statusDot: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#4ade80',
   },
   statusText: {
     color: '#64748b',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 2,
-    fontFamily: 'System',
-    textAlign: 'center',
-    height: 20,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
-  star: {
-    position: 'absolute',
-  },
-  starDot: {
-    backgroundColor: 'white',
-    borderRadius: 10,
+  loadingDots: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
   },
   footer: {
     position: 'absolute',
-    bottom: 50,
+    bottom: 60,
     alignItems: 'center',
+    gap: 8,
+  },
+  footerBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.15)',
   },
   footerText: {
-    color: 'rgba(71, 85, 105, 0.6)',
+    color: '#22c55e',
     fontSize: 8,
     fontWeight: '900',
     letterSpacing: 2.5,
   },
   versionText: {
-    color: 'rgba(71, 85, 105, 0.4)',
-    fontSize: 7,
+    color: '#1e293b',
+    fontSize: 9,
     fontWeight: '700',
-    marginTop: 6,
     letterSpacing: 1,
   },
 });
-
