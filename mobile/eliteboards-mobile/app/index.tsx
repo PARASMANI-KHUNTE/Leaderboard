@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, Image as RNImage } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, Image as RNImage, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '../src/providers/AuthProvider';
@@ -197,6 +197,52 @@ export default function Home() {
             </View>
           )
         }
+        ListFooterComponent={
+          !isLoading ? (
+            <View style={styles.footerSection}>
+              {/* About Section */}
+              <View style={styles.aboutContainer}>
+                <Text style={styles.aboutTitle}>HOW <Text style={{color: '#6366f1'}}>ELITEBOARDS</Text> WORKS</Text>
+                
+                <View style={styles.aboutCard}>
+                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>⚡</Text></View>
+                  <Text style={styles.aboutCardTitle}>1. Create a Board</Text>
+                  <Text style={styles.aboutCardDesc}>Instantly generate a real-time leaderboard for your batch, classroom, or competition.</Text>
+                </View>
+
+                <View style={styles.aboutCard}>
+                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>👥</Text></View>
+                  <Text style={styles.aboutCardTitle}>2. Share & Compete</Text>
+                  <Text style={styles.aboutCardDesc}>Share the unique link. Users can seamlessly submit their scores through web or this app.</Text>
+                </View>
+
+                <View style={styles.aboutCard}>
+                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>📈</Text></View>
+                  <Text style={styles.aboutCardTitle}>3. Track in Real-time</Text>
+                  <Text style={styles.aboutCardDesc}>Watch the rankings update live. Perfect for hackathons, quizzes, and gamified learning.</Text>
+                </View>
+              </View>
+
+              {/* Dev Footer */}
+              <View style={styles.devFooter}>
+                <View style={styles.devHeader}>
+                  <Text style={styles.devElite}>Elite</Text>
+                  <Text style={styles.devBoards}>Boards</Text>
+                </View>
+                <Text style={styles.devSub}>Empowering student communities with real-time competitive ranking systems.</Text>
+                
+                <Text style={styles.connectTitle}>DEVELOPED BY</Text>
+                <View style={styles.socialRow}>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://github.com/PARASMANI-KHUNTE')}><Text style={styles.socialIcon}>🐙</Text></Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://www.linkedin.com/in/parasmani-khunte-330488228/')}><Text style={styles.socialIcon}>💼</Text></Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('mailto:parasmanikhunte@gmail.com')}><Text style={styles.socialIcon}>✉️</Text></Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://parasmanikhunte.onrender.com/')}><Text style={styles.socialIcon}>🌐</Text></Pressable>
+                </View>
+                <Text style={styles.copyright}>© {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</Text>
+              </View>
+            </View>
+          ) : null
+        }
       />
 
       {/* FAB */}
@@ -381,4 +427,113 @@ const styles = StyleSheet.create({
   modalBtnPrimary: { backgroundColor: '#4f46e5', flex: 2 },
   modalBtnSecText: { color: '#94a3b8', fontWeight: '800' },
   modalBtnPriText: { color: 'white', fontWeight: '800', textAlign: 'center' },
+
+  /* Footer Section */
+  footerSection: {
+    marginTop: 40,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  aboutContainer: {
+    marginBottom: 40,
+  },
+  aboutTitle: {
+    color: '#e5e7eb',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 20,
+    letterSpacing: -0.5,
+  },
+  aboutCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  aboutIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  aboutIcon: {
+    fontSize: 20,
+  },
+  aboutCardTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  aboutCardDesc: {
+    color: '#94a3b8',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  devFooter: {
+    paddingTop: 30,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+  },
+  devHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  devElite: {
+    color: '#c7d2fe',
+    fontSize: 24,
+    fontWeight: '900',
+    fontStyle: 'italic',
+  },
+  devBoards: {
+    color: '#6366f1',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  devSub: {
+    color: '#64748b',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  connectTitle: {
+    color: '#475569',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 24,
+  },
+  socialBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIcon: {
+    fontSize: 20,
+  },
+  copyright: {
+    color: '#475569',
+    fontSize: 10,
+    fontWeight: '600',
+  },
 });
