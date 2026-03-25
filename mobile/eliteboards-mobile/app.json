@@ -16,7 +16,6 @@
       "fallbackToCacheTimeout": 0
     },
     "extra": {
-      "API_URL": "http://localhost:5000"
     },
     "ios": {
       "supportsTablet": true

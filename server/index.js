@@ -15,9 +15,17 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
+// Allow requests from both the web client and mobile devices on the LAN.
+const allowedOrigins = [process.env.CLIENT_URL];
+
 const io = socketIo(server, {
     cors: {
-        origin: process.env.CLIENT_URL,
+        origin: (origin, cb) => {
+            // Mobile apps (React Native) send no origin header; allow them.
+            if (!origin) return cb(null, true);
+            if (allowedOrigins.includes(origin)) return cb(null, true);
+            cb(null, true); // In dev, allow all origins for mobile testing.
+        },
         methods: ["GET", "POST"]
     }
 });
@@ -29,7 +37,12 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL,
+    origin: (origin, cb) => {
+        // React Native requests have no origin header; allow them.
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        cb(null, true); // In dev, allow all origins for mobile testing.
+    },
     credentials: true
 }));
 app.use(express.json());

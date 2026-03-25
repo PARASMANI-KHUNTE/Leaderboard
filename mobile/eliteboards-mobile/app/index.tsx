@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { useAuth } from './providers/AuthProvider';
-import { useOffline } from './offline/OfflineProvider';
+import { useAuth } from '../src/providers/AuthProvider';
+import { useOffline } from '../src/offline/OfflineProvider';
 import {
   useCreateLeaderboard,
   useDeleteLeaderboard,
   useLeaderboards,
   useToggleLeaderboardStatus,
-} from './api/hooks';
-import { readJsonCache, writeJsonCache } from './offline/cache';
+} from '../src/api/hooks';
+import { readJsonCache, writeJsonCache } from '../src/offline/cache';
 
 export default function Home() {
   const router = useRouter();
@@ -27,7 +27,6 @@ export default function Home() {
   const [cachedLeaderboards, setCachedLeaderboards] = useState<any[] | null>(null);
 
   const isBanned = !!user?.isBanned;
-
   const canCreate = !!user && !isBanned && isConnected;
   const canAct = !!user && !isBanned && isConnected;
 
@@ -36,37 +35,28 @@ export default function Home() {
 
   useEffect(() => {
     if (isConnected) return;
-
     let cancelled = false;
     (async () => {
       const cached = await readJsonCache<any[]>('offline:leaderboards');
       if (cancelled) return;
       setCachedLeaderboards(cached ?? []);
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [isConnected]);
 
   useEffect(() => {
-    if (!isConnected) return;
-    if (!leaderboards) return;
+    if (!isConnected || !leaderboards) return;
     writeJsonCache('offline:leaderboards', leaderboards).catch(() => {});
   }, [isConnected, leaderboards]);
 
   const onCreate = async () => {
     const name = createName.trim();
     if (!name) return;
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
+    if (!user) { router.replace('/login'); return; }
     if (!canCreate) {
-      Alert.alert('Actions disabled', isConnected ? 'Your account is banned.' : 'You are offline. Try again when connected.');
+      Alert.alert('Actions disabled', isConnected ? 'Your account is banned.' : 'You are offline.');
       return;
     }
-
     try {
       await createLeaderboard.mutateAsync({ name });
       setCreateOpen(false);
@@ -76,196 +66,309 @@ export default function Home() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
     const lbId = String(item._id);
     const isCreator = user ? String(item.createdBy) === String(user.id) : false;
     const canModify = canAct && (user?.isAdmin || isCreator);
 
     return (
-      <View style={styles.boardCard}>
-        <Pressable
-          style={{ flex: 1 }}
-          onPress={() => router.push(`/lb/${item.slug}`)}
-        >
-          <Text style={styles.boardName}>{item.name}</Text>
-          <Text style={styles.boardMeta}>{item.isLive ? 'Live' : 'Down'} • {item.entryCount ?? 0} entries</Text>
-        </Pressable>
-
-        <View style={styles.boardActions}>
-          {canModify ? (
-            <>
-              <Pressable
-                style={[styles.smallBtn, styles.smallBtnPrimary]}
-                onPress={() => toggleLeaderboardStatus.mutate(lbId)}
-              >
-                <Text style={styles.smallBtnText}>Toggle</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.smallBtn, styles.smallBtnDanger]}
-                onPress={() => {
-                  Alert.alert('Delete leaderboard?', 'This removes all entries in the board.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete',
-                      style: 'destructive',
-                      onPress: () => deleteLeaderboard.mutate(lbId),
-                    },
-                  ]);
-                }}
-              >
-                <Text style={styles.smallBtnText}>Delete</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Text style={styles.readOnlyTag}>{user ? (item.isLive ? 'Open' : 'Down') : 'Read-only'}</Text>
-          )}
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={() => router.push(`/lb/${item.slug}`)}
+      >
+        {/* Top row: icon + status */}
+        <View style={styles.cardTop}>
+          <View style={styles.trophyIcon}>
+            <Text style={styles.trophyText}>🏆</Text>
+          </View>
+          <View style={styles.cardTopRight}>
+            {canModify && (
+              <>
+                <Pressable
+                  style={styles.cardActionBtn}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    Alert.alert('Delete leaderboard?', 'This removes all entries.', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Delete', style: 'destructive', onPress: () => deleteLeaderboard.mutate(lbId) },
+                    ]);
+                  }}
+                >
+                  <Text style={styles.cardActionDanger}>🗑</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.cardActionBtn}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    toggleLeaderboardStatus.mutate(lbId);
+                  }}
+                >
+                  <Text style={styles.cardActionToggle}>{item.isLive ? '⏸' : '▶'}</Text>
+                </Pressable>
+              </>
+            )}
+            <View style={[styles.statusBadge, item.isLive ? styles.statusLive : styles.statusDown]}>
+              <View style={[styles.statusDot, item.isLive ? styles.dotLive : styles.dotDown]} />
+              <Text style={[styles.statusText, item.isLive ? styles.statusTextLive : styles.statusTextDown]}>
+                {item.isLive ? 'LIVE' : 'DOWN'}
+              </Text>
+            </View>
+          </View>
         </View>
-      </View>
+
+        {/* Board name */}
+        <Text style={styles.cardName}>{item.name}</Text>
+
+        {/* Entry count */}
+        <View style={styles.cardMeta}>
+          <Text style={styles.cardMetaIcon}>👥</Text>
+          <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardFooterText}>VIEW BOARD</Text>
+          <Text style={styles.cardFooterArrow}>→</Text>
+        </View>
+      </Pressable>
     );
   };
 
   if (isError && isConnected) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>EliteBoards</Text>
-        <Text style={styles.subtitle}>Failed to load leaderboards.</Text>
+      <View style={styles.centerWrap}>
+        <Text style={styles.errorTitle}>EliteBoards</Text>
+        <Text style={styles.errorSub}>Failed to load leaderboards.</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.title}>EliteBoards</Text>
-        {isBanned ? <Text style={styles.bannedText}>Banned: actions disabled</Text> : null}
-        {!isConnected ? <Text style={styles.offlineText}>Offline: showing cached leaderboards</Text> : null}
-      </View>
+      <FlatList
+        data={displayedBoards}
+        keyExtractor={(it) => String(it._id)}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: 4 }}
+        ListHeaderComponent={
+          <View style={styles.hero}>
+            {/* Realtime badge */}
+            <View style={styles.realtimeBadge}>
+              <View style={styles.realtimeDot} />
+              <Text style={styles.realtimeText}>REAL-TIME SYSTEMS ACTIVE</Text>
+            </View>
 
-      {isLoading ? (
-        <View style={styles.loadingWrap}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={displayedBoards}
-          keyExtractor={(it) => String(it._id)}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 120 }}
-        />
+            {/* Title */}
+            <View style={styles.titleRow}>
+              <Text style={styles.titleElite}>Elite</Text>
+              <Text style={styles.titleBoards}>Boards</Text>
+            </View>
+            <Text style={styles.heroSub}>
+              The ultimate student ranking platform. Create, share, and track performance in real-time.
+            </Text>
+
+            {/* Banners */}
+            {isBanned && <Text style={styles.banner}>⛔ Account banned — actions disabled</Text>}
+            {!isConnected && <Text style={styles.banner}>📡 Offline — showing cached data</Text>}
+
+            {/* Create button */}
+            {user && isConnected && !isBanned && (
+              <Pressable style={styles.createBtn} onPress={() => setCreateOpen(true)}>
+                <Text style={styles.createBtnText}>＋  Create New Board</Text>
+              </Pressable>
+            )}
+          </View>
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.emptyWrap}>
+              <ActivityIndicator color="#6366f1" size="large" />
+              <Text style={styles.loadingText}>LOADING_DATA...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={styles.emptyText}>No leaderboards found. Be the first to create one!</Text>
+            </View>
+          )
+        }
+      />
+
+      {/* FAB */}
+      {canCreate && (
+        <Pressable
+          style={styles.fab}
+          onPress={() => {
+            if (!user) router.replace('/login');
+            else setCreateOpen(true);
+          }}
+        >
+          <Text style={styles.fabText}>＋</Text>
+        </Pressable>
       )}
 
-      <Pressable
-        style={[styles.fab, !canCreate ? styles.fabDisabled : null]}
-        disabled={!canCreate}
-        onPress={() => {
-          if (!user) router.replace('/login');
-          else if (!isConnected) Alert.alert('Offline', 'Actions are disabled while offline.');
-          else setCreateOpen(true);
-        }}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </Pressable>
-
-      {createOpen ? (
+      {/* Create modal */}
+      {createOpen && (
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Create leaderboard</Text>
-            <TextInput
-              placeholder="Leaderboard name"
-              placeholderTextColor="#64748b"
-              style={styles.input}
-              value={createName}
-              onChangeText={setCreateName}
-            />
+            <Text style={styles.modalTitle}>New Leaderboard</Text>
+            <View style={styles.fieldWrap}>
+              <Text style={styles.fieldLabel}>BOARD NAME</Text>
+              <TextInput
+                placeholder="e.g. Batch 2025 MCS"
+                placeholderTextColor="#475569"
+                style={styles.input}
+                value={createName}
+                onChangeText={setCreateName}
+                autoFocus
+              />
+            </View>
             <View style={styles.modalActions}>
               <Pressable
                 style={[styles.modalBtn, styles.modalBtnSecondary]}
-                onPress={() => {
-                  setCreateOpen(false);
-                  setCreateName('');
-                }}
+                onPress={() => { setCreateOpen(false); setCreateName(''); }}
               >
-                <Text style={styles.modalBtnText}>Cancel</Text>
+                <Text style={styles.modalBtnSecText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.modalBtn} onPress={onCreate} disabled={createLeaderboard.isPending}>
-                <Text style={styles.modalBtnText}>{createLeaderboard.isPending ? 'Creating...' : 'Create'}</Text>
+              <Pressable
+                style={[styles.modalBtn, styles.modalBtnPrimary]}
+                onPress={onCreate}
+                disabled={createLeaderboard.isPending}
+              >
+                <Text style={styles.modalBtnPriText}>
+                  {createLeaderboard.isPending ? 'Creating...' : 'Create Board'}
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
-      ) : null}
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0b1020' },
-  container: { flex: 1, backgroundColor: '#0b1020', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  header: { paddingHorizontal: 16, paddingTop: 22, paddingBottom: 10 },
-  title: { color: '#a5b4fc', fontSize: 28, fontWeight: '900' },
-  bannedText: { color: '#fb7185', marginTop: 6, fontWeight: '800' },
-  offlineText: { color: '#fb7185', marginTop: 6, fontWeight: '800', textAlign: 'left' },
-  subtitle: { color: '#94a3b8', fontSize: 14, marginTop: 8 },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { color: '#94a3b8' },
-  boardCard: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: '#111a33',
-    borderWidth: 1,
-    borderColor: '#1f2a4d',
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
+  centerWrap: { flex: 1, backgroundColor: '#0b1020', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  errorTitle: { color: '#a5b4fc', fontSize: 28, fontWeight: '900' },
+  errorSub: { color: '#94a3b8', fontSize: 14, marginTop: 8, textAlign: 'center' },
+
+  /* Hero */
+  hero: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16, alignItems: 'center' },
+  realtimeBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderWidth: 1, borderColor: 'rgba(34, 197, 94, 0.15)',
+    marginBottom: 14,
   },
-  boardName: { color: '#e5e7eb', fontWeight: '900', fontSize: 16 },
-  boardMeta: { color: '#94a3b8', fontWeight: '700', fontSize: 12, marginTop: 4 },
-  boardActions: { alignItems: 'flex-end', gap: 8 },
-  readOnlyTag: { color: '#94a3b8', fontWeight: '800', fontSize: 12 },
-  smallBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 90,
-    alignItems: 'center',
+  realtimeDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: '#22c55e',
   },
-  smallBtnText: { color: '#e5e7eb', fontWeight: '900', fontSize: 12 },
-  smallBtnPrimary: { borderColor: '#7c3aed', backgroundColor: '#1b1147' },
-  smallBtnDanger: { borderColor: '#fb7185', backgroundColor: '#2a0d16' },
+  realtimeText: { color: '#22c55e', fontSize: 9, fontWeight: '900', letterSpacing: 2.5 },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 },
+  titleElite: {
+    color: '#c7d2fe', fontSize: 38, fontWeight: '900',
+    fontStyle: 'italic', letterSpacing: -1,
+  },
+  titleBoards: {
+    color: '#6366f1', fontSize: 38, fontWeight: '900', letterSpacing: -1,
+  },
+  heroSub: {
+    color: '#64748b', fontSize: 14, fontWeight: '500',
+    textAlign: 'center', lineHeight: 20, maxWidth: 320, marginBottom: 16,
+  },
+  banner: { color: '#fb7185', fontSize: 12, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  createBtn: {
+    backgroundColor: '#4f46e5', paddingHorizontal: 24, paddingVertical: 14,
+    borderRadius: 16, marginTop: 4, elevation: 4,
+  },
+  createBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
+
+  /* Cards */
+  card: {
+    marginHorizontal: 16, marginVertical: 6, padding: 16,
+    borderRadius: 16, backgroundColor: '#111a33',
+    borderWidth: 1, borderColor: '#1f2a4d',
+  },
+  cardPressed: { borderColor: 'rgba(99, 102, 241, 0.4)' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  trophyIcon: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: 'rgba(79, 70, 229, 0.1)', alignItems: 'center', justifyContent: 'center',
+  },
+  trophyText: { fontSize: 20 },
+  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardActionBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center',
+  },
+  cardActionDanger: { fontSize: 13 },
+  cardActionToggle: { fontSize: 12 },
+  statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
+  },
+  statusLive: { backgroundColor: 'rgba(34, 197, 94, 0.12)' },
+  statusDown: { backgroundColor: 'rgba(239, 68, 68, 0.12)' },
+  statusDot: { width: 5, height: 5, borderRadius: 2.5 },
+  dotLive: { backgroundColor: '#22c55e' },
+  dotDown: { backgroundColor: '#ef4444' },
+  statusText: { fontSize: 8, fontWeight: '900', letterSpacing: 2 },
+  statusTextLive: { color: '#4ade80' },
+  statusTextDown: { color: '#f87171' },
+  cardName: {
+    color: '#e5e7eb', fontSize: 20, fontWeight: '900',
+    letterSpacing: -0.3, marginBottom: 8,
+  },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  cardMetaIcon: { fontSize: 12 },
+  cardMetaText: { color: '#475569', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
+  cardFooter: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 12,
+  },
+  cardFooterText: { color: '#64748b', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  cardFooterArrow: { color: '#64748b', fontSize: 14 },
+
+  /* Empty / Loading */
+  emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  loadingText: { color: '#64748b', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  emptyIcon: { fontSize: 40 },
+  emptyText: { color: '#475569', fontSize: 13, fontWeight: '600', textAlign: 'center', fontStyle: 'italic' },
+
+  /* FAB */
   fab: {
-    position: 'absolute',
-    right: 18,
-    bottom: 18,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#4f46e5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
+    position: 'absolute', right: 18, bottom: 18,
+    width: 56, height: 56, borderRadius: 18,
+    backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center',
+    elevation: 8,
   },
-  fabDisabled: { opacity: 0.45 },
-  fabText: { color: 'white', fontSize: 26, fontWeight: '900' },
+  fabText: { color: 'white', fontSize: 24, fontWeight: '900' },
+
+  /* Modal */
   modalOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  modal: { width: '100%', backgroundColor: '#0f172a', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#1f2a4d' },
-  modalTitle: { color: '#e5e7eb', fontWeight: '900', fontSize: 16, marginBottom: 10 },
-  input: { backgroundColor: '#0b1020', borderWidth: 1, borderColor: '#1f2a4d', color: '#e5e7eb', padding: 12, borderRadius: 12 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 14 },
-  modalBtn: { backgroundColor: '#4f46e5', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
-  modalBtnSecondary: { backgroundColor: '#111a33' },
-  modalBtnText: { color: 'white', fontWeight: '900' },
+  modal: {
+    width: '100%', backgroundColor: '#0f172a', borderRadius: 20,
+    padding: 20, borderWidth: 1, borderColor: '#1f2a4d',
+  },
+  modalTitle: { color: '#e5e7eb', fontWeight: '900', fontSize: 20, marginBottom: 16 },
+  fieldWrap: { marginBottom: 16 },
+  fieldLabel: { color: '#475569', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 6 },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    color: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, fontSize: 14,
+  },
+  modalActions: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  modalBtn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 12 },
+  modalBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  modalBtnPrimary: { backgroundColor: '#4f46e5', flex: 2 },
+  modalBtnSecText: { color: '#94a3b8', fontWeight: '800' },
+  modalBtnPriText: { color: 'white', fontWeight: '800', textAlign: 'center' },
 });
-

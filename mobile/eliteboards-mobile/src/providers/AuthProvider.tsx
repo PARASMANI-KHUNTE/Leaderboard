@@ -39,7 +39,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   const fetchProfile = useCallback(async (jwtToken: string) => {
     const res = await axios.get(`${API_URL}/auth/profile`, {
-      headers: { Authorization: `Bearer ${jwtToken}` },
+      headers: { 
+        Authorization: `Bearer ${jwtToken}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
       timeout: 10000,
     });
 
@@ -88,7 +91,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const res = await axios.post(
         `${API_URL}/api/auth/exchange`,
         { code },
-        { timeout: 10000 }
+        { 
+          timeout: 10000,
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        }
       );
 
       const nextToken = res.data?.token;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAuth } from './providers/AuthProvider';
+import { useAuth } from '../src/providers/AuthProvider';
 
 export default function LoginSuccessScreen() {
   const params = useLocalSearchParams<{ code?: string }>();

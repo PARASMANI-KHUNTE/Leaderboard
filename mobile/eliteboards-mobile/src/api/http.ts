@@ -7,7 +7,10 @@ export function createHttpClient(token?: string | null) {
   return axios.create({
     baseURL: API_URL,
     timeout: 10000,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: {
+      'ngrok-skip-browser-warning': 'true',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
 }
 
