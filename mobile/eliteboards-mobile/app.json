@@ -23,7 +23,11 @@
       }
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.parasmanikhunte.eliteboards",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +37,7 @@
         "monochromeImage": "./assets/logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.eliteboardsmobile"
+      "package": "com.parasmanikhunte.eliteboards"
     },
     "web": {
       "favicon": "./assets/favicon.png"

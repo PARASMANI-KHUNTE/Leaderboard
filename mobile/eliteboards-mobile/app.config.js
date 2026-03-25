@@ -20,6 +20,18 @@ export default ({ config }) => {
   
   return {
     ...config,
+    ios: {
+      ...config.ios,
+      bundleIdentifier: config.ios?.bundleIdentifier || 'com.parasmanikhunte.eliteboards',
+      config: {
+        ...config.ios?.config,
+        usesNonExemptEncryption: false
+      }
+    },
+    android: {
+      ...config.android,
+      package: config.android?.package || 'com.parasmanikhunte.eliteboards'
+    },
     extra: {
       ...config.extra,
       API_URL: envUrl || 'http://localhost:5000',
