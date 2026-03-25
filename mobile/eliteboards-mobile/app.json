@@ -16,6 +16,10 @@
       "fallbackToCacheTimeout": 0
     },
     "extra": {
+      "API_URL": "https://leaderboard-backend-3pek.onrender.com",
+      "eas": {
+        "projectId": "83fb6e86-1c2f-49cb-aaf7-d3193421ba54"
+      }
     },
     "ios": {
       "supportsTablet": true
@@ -27,10 +31,12 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.eliteboardsmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "owner": "parasmani"
   }
 }

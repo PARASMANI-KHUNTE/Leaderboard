@@ -2,21 +2,17 @@
   "cli": {
     "version": ">= 2.0.0"
   },
-  "update": {
-    "dev": {
-      "channel": "dev"
-    },
-    "staging": {
-      "channel": "staging"
-    },
-    "prod": {
-      "channel": "prod"
-    }
-  },
   "build": {
-    "production": {
-      "env": {}
-    }
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {}
   }
 }
-
