@@ -86,29 +86,44 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     };
   }, [fetchProfile]);
 
+  const exchangingRef = React.useRef(false);
+
   const exchangeCodeAndSignIn = useCallback(
     async (code: string) => {
-      console.log('[Auth] Exchanging code at:', `${API_URL}/api/auth/exchange`);
-      console.log('[Auth] Code length:', code.length);
-      const res = await axios.post(
-        `${API_URL}/api/auth/exchange`,
-        { code },
-        { 
-          timeout: 10000,
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        }
-      );
-
-      const nextToken = res.data?.token;
-      if (!nextToken || typeof nextToken !== 'string') {
-        throw new Error('Exchange did not return a token');
+      if (exchangingRef.current) {
+        console.log('[Auth] Exchange already in progress, ignoring duplicate call');
+        return;
       }
+      exchangingRef.current = true;
 
-      console.log('[Auth] Token received, storing...');
-      await SecureStore.setItemAsync(TOKEN_KEY, nextToken);
-      setToken(nextToken);
-      await fetchProfile(nextToken);
-      console.log('[Auth] Login complete');
+      try {
+        console.log('[Auth] Exchanging code at:', `${API_URL}/api/auth/exchange`);
+        console.log('[Auth] Code length:', code.length);
+        const res = await axios.post(
+          `${API_URL}/api/auth/exchange`,
+          { code },
+          { 
+            timeout: 10000,
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          }
+        );
+
+        const nextToken = res.data?.token;
+        if (!nextToken || typeof nextToken !== 'string') {
+          throw new Error('Exchange did not return a token');
+        }
+
+        console.log('[Auth] Token received, storing...');
+        await SecureStore.setItemAsync(TOKEN_KEY, nextToken);
+        setToken(nextToken);
+        await fetchProfile(nextToken);
+        console.log('[Auth] Login complete');
+      } finally {
+        // We delay resetting the flag slightly to catch immediate subsequent deep links
+        setTimeout(() => {
+          exchangingRef.current = false;
+        }, 2000);
+      }
     },
     [fetchProfile]
   );

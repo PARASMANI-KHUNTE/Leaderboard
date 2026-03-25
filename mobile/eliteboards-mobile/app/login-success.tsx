@@ -6,12 +6,20 @@ import { useAuth } from '../src/providers/AuthProvider';
 export default function LoginSuccessScreen() {
   const params = useLocalSearchParams<{ code?: string }>();
   const router = useRouter();
-  const { exchangeCodeAndSignIn, loading: authLoading } = useAuth();
+  const { user, exchangeCodeAndSignIn, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<'idle' | 'exchanging' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
+
+    // If user is already authenticated (handled by login.tsx via WebBrowser),
+    // just navigate home without trying to exchange the code a second time.
+    if (user) {
+      router.replace('/');
+      return;
+    }
+
     const code = params?.code;
     
     console.log('[LoginSuccess] params:', JSON.stringify(params));
@@ -45,7 +53,7 @@ export default function LoginSuccessScreen() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, exchangeCodeAndSignIn, params?.code, router]);
+  }, [authLoading, user, exchangeCodeAndSignIn, params?.code, router]);
 
   return (
     <View style={styles.container}>
