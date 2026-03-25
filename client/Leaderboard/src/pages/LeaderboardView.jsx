@@ -15,15 +15,22 @@ const LeaderboardView = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useModal();
+    const PAGE_LIMIT = 20;
     const [leaderboard, setLeaderboard] = useState(null);
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pageCursor, setPageCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [reportModal, setReportModal] = useState(null);
     const [reportReason, setReportReason] = useState('');
     const [showCelebration, setShowCelebration] = useState(false);
     const tableRef = useRef(null);
+    const socketRef = useRef(null);
+    const refetchTimerRef = useRef(null);
+    const activeLeaderboardIdRef = useRef(null);
 
     const handleSuccess = (subData) => {
         setEditingEntry(null);
@@ -47,47 +54,101 @@ const LeaderboardView = () => {
     }, [editingEntry]);
 
     useEffect(() => {
+        const socket = io(API_URL);
+        socketRef.current = socket;
+
+        const fetchEntriesPage = async (cursorToUse, { reset }) => {
+            const activeLeaderboardId = activeLeaderboardIdRef.current;
+            if (!activeLeaderboardId) return;
+
+            try {
+                if (reset) setLoading(true);
+                else setLoadingMore(true);
+
+                const params = { limit: PAGE_LIMIT };
+                if (cursorToUse) params.cursor = cursorToUse;
+
+                const res = await axios.get(`${API_URL}/api/leaderboard/${activeLeaderboardId}`, { params });
+                const { items, nextCursor, hasMore } = res.data;
+
+                if (reset) {
+                    setEntries(items);
+                } else {
+                    setEntries((prev) => [...prev, ...items]);
+                }
+
+                setPageCursor(nextCursor);
+                setHasMore(hasMore);
+            } catch (err) {
+                console.error('Error loading entries:', err);
+            } finally {
+                if (reset) setLoading(false);
+                else setLoadingMore(false);
+            }
+        };
+
+        const scheduleRefetch = () => {
+            if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+            refetchTimerRef.current = setTimeout(() => {
+                fetchEntriesPage(null, { reset: true });
+            }, 500);
+        };
+
+        // Register realtime listeners immediately.
+        // We scope by `activeLeaderboardIdRef.current` so failures in earlier axios calls
+        // cannot prevent listener registration.
+        const handleLeaderboardChanged = ({ leaderboardId: changedId }) => {
+            if (!changedId) return;
+            if (changedId === activeLeaderboardIdRef.current) scheduleRefetch();
+        };
+
+        const handleLeaderboardDeleted = (deletedId) => {
+            if (!deletedId) return;
+            if (deletedId === activeLeaderboardIdRef.current) {
+                showAlert('Board Deleted', 'This leaderboard has been removed by an admin.');
+                navigate('/');
+            }
+        };
+
+        const handleLeaderboardStatusUpdated = ({ id, isLive }) => {
+            if (!id) return;
+            if (id === activeLeaderboardIdRef.current) {
+                setLeaderboard(prev => ({ ...prev, isLive }));
+            }
+        };
+
+        socket.on('leaderboardChanged', handleLeaderboardChanged);
+        socket.on('leaderboardDeleted', handleLeaderboardDeleted);
+        socket.on('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
+
         const fetchData = async () => {
             try {
                 // Get leaderboard details
                 const lbRes = await axios.get(`${API_URL}/api/leaderboards/${slug}`);
                 setLeaderboard(lbRes.data);
+                activeLeaderboardIdRef.current = lbRes.data._id;
 
-                // Get entries
-                const entriesRes = await axios.get(`${API_URL}/api/leaderboard/${lbRes.data._id}`);
-                setEntries(entriesRes.data);
+                socket.emit('joinLeaderboard', lbRes.data._id);
 
-                // Setup Socket.io for this specific leaderboard
-                const socket = io(API_URL);
-                socket.on(`leaderboardUpdate:${lbRes.data._id}`, (updatedEntries) => {
-                    setEntries(updatedEntries);
-                });
-
-                socket.on(`statusUpdate:${lbRes.data._id}`, ({ isLive }) => {
-                    setLeaderboard(prev => ({ ...prev, isLive }));
-                });
-
-                socket.on('leaderboardDeleted', (deletedId) => {
-                    if (deletedId === lbRes.data._id) {
-                        showAlert('Board Deleted', 'This leaderboard has been removed by an admin.');
-                        navigate('/');
-                    }
-                });
-
-                socket.on(`reactionUpdate:${lbRes.data._id}`, ({ entryId, hearts, likedBy, dislikes, dislikedBy }) => {
-                    setEntries(prev => prev.map(e => e._id === entryId ? { ...e, hearts, likedBy, dislikes, dislikedBy } : e));
-                });
-
-
-                return () => socket.disconnect();
+                // Initial entries load (page 1)
+                setPageCursor(null);
+                setHasMore(false);
+                await fetchEntriesPage(null, { reset: true });
             } catch (err) {
                 console.error('Error:', err);
-            } finally {
                 setLoading(false);
             }
         };
 
         fetchData();
+
+        return () => {
+            if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+            socket.off('leaderboardChanged', handleLeaderboardChanged);
+            socket.off('leaderboardDeleted', handleLeaderboardDeleted);
+            socket.off('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
+            socket.disconnect();
+        };
     }, [slug]);
 
     const handleToggleStatus = async () => {
@@ -156,6 +217,28 @@ const LeaderboardView = () => {
             });
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to delete entry');
+        }
+    };
+
+    const handleLoadMore = async () => {
+        if (!leaderboard?._id) return;
+        if (!pageCursor) return;
+        if (loadingMore) return;
+
+        try {
+            setLoadingMore(true);
+            const params = { limit: PAGE_LIMIT, cursor: pageCursor };
+            const res = await axios.get(`${API_URL}/api/leaderboard/${leaderboard._id}`, { params });
+            const { items, nextCursor, hasMore } = res.data;
+
+            setEntries((prev) => [...prev, ...items]);
+            setPageCursor(nextCursor);
+            setHasMore(hasMore);
+        } catch (err) {
+            console.error('Error loading more entries:', err);
+            showAlert('Error', err.response?.data?.message || 'Failed to load more');
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -305,6 +388,18 @@ const LeaderboardView = () => {
                             onOpenReport={setReportModal}
                         />
                     </div>
+
+                    {hasMore && (
+                        <div className="flex justify-center py-2">
+                            <button
+                                onClick={handleLoadMore}
+                                disabled={loadingMore}
+                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 transition-all text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95"
+                            >
+                                {loadingMore ? 'Loading...' : 'Load More'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 

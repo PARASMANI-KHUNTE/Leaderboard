@@ -3,22 +3,197 @@ const router = express.Router();
 const LeaderboardEntry = require('../models/Leaderboard');
 const { User } = require('../models/User');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const { auth } = require('../middleware/auth');
 
-// Get all entries for a specific leaderboard (filtering out banned users)
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 50;
+
+function encodeCursor(cursorObj) {
+    return Buffer.from(JSON.stringify(cursorObj)).toString('base64url');
+}
+
+function decodeCursor(cursorStr) {
+    if (!cursorStr) return null;
+    try {
+        const json = Buffer.from(cursorStr, 'base64url').toString('utf8');
+        return JSON.parse(json);
+    } catch (e) {
+        return null;
+    }
+}
+
+async function getBanVersion(redisClient) {
+    const { getVersion } = require('../config/redis');
+    return await getVersion(redisClient, 'lb:ban:version');
+}
+
+async function getEntriesVersion(redisClient, leaderboardId) {
+    const { getVersion } = require('../config/redis');
+    return await getVersion(redisClient, `lb:${leaderboardId}:version`);
+}
+
+async function invalidateEntriesCache(redisClient, leaderboardId) {
+    // We use versioned cache keys, so invalidation is a cheap INCR.
+    const { bumpVersion } = require('../config/redis');
+    await bumpVersion(redisClient, `lb:${leaderboardId}:version`);
+}
+
+// Get entries for a specific leaderboard (cursor-based + stable ordering)
 router.get('/:leaderboardId', async (req, res) => {
     try {
-        // First find all banned user IDs
+        const { leaderboardId } = req.params;
+
+        const rawLimit = req.query.limit ? Number(req.query.limit) : DEFAULT_LIMIT;
+        const limit = Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
+        const cursor = decodeCursor(req.query.cursor);
+
+        const page = cursor?.page ? Number(cursor.page) : 1;
+        const cursorCgpa = cursor?.cgpa;
+        const cursorMarks = cursor?.marks;
+        const cursorId = cursor?.id ? new mongoose.Types.ObjectId(cursor.id) : null;
+
+        // First find all banned user IDs (to exclude them from results + rank calc)
         const bannedUsers = await User.find({ isBanned: true }).select('_id');
         const bannedUserIds = bannedUsers.map(u => u._id);
 
-        const entries = await LeaderboardEntry.find({
-            leaderboardId: req.params.leaderboardId,
-            userId: { $nin: bannedUserIds }
-        }).sort({ cgpa: -1, marks: -1 }); // Sort by CGPA, then Marks
+        const redisClient = await (async () => {
+            try {
+                const { getRedisClient } = require('../config/redis');
+                return await getRedisClient();
+            } catch {
+                return null;
+            }
+        })();
 
-        res.json(entries);
+        // Cache only hot data to avoid cache explosion:
+        // - leaderboard top 10: first page only
+        // - entries pages: limit=20 only, page 1 and 2 only
+        const cursorProvided = !!req.query.cursor;
+        const canCache = redisClient && (
+            (limit === 10 && !cursorProvided && page === 1) ||
+            (limit === DEFAULT_LIMIT && page <= 2)
+        );
+
+        if (canCache) {
+            const [banVersion, entriesVersion] = await Promise.all([
+                getBanVersion(redisClient),
+                getEntriesVersion(redisClient, leaderboardId),
+            ]);
+            const cacheKey = `lb:${leaderboardId}:entries:page:${page}:limit:${limit}:banV:${banVersion}:v:${entriesVersion}`;
+            const cached = await require('../config/redis').cacheGet(redisClient, cacheKey);
+            if (cached) return res.json(cached);
+        }
+
+        const matchBase = {
+            leaderboardId: new mongoose.Types.ObjectId(leaderboardId),
+            userId: { $nin: bannedUserIds },
+        };
+
+        const pipeline = [
+            { $match: matchBase },
+            // Compute a single composite tie key so MongoDB can apply `$rank`
+            // (it requires `sortBy` to contain exactly one element).
+            // Ordering still behaves like `(cgpa desc, marks desc)` and ties are based
+            // on identical `(cgpa, marks)`.
+            {
+                $addFields: {
+                    tieScore: {
+                        $add: [
+                            { $multiply: ['$cgpa', 1000000] },
+                            { $ifNull: ['$marks', 0] },
+                        ],
+                    },
+                },
+            },
+            // Compute global, tie-aware rank using only `(cgpa, marks)` as the tie key.
+            {
+                $setWindowFields: {
+                    sortBy: { tieScore: -1 },
+                    output: {
+                        rank: { $rank: {} },
+                    },
+                },
+            },
+        ];
+
+        // Cursor pagination (stable): order is cgpa desc, marks desc, _id desc.
+        if (cursorId && cursorCgpa !== undefined && cursorMarks !== undefined) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { cgpa: { $lt: cursorCgpa } },
+                        {
+                            cgpa: cursorCgpa,
+                            marks: { $lt: cursorMarks },
+                        },
+                        {
+                            cgpa: cursorCgpa,
+                            marks: cursorMarks,
+                            _id: { $lt: cursorId },
+                        },
+                    ],
+                },
+            });
+        }
+
+        pipeline.push(
+            { $sort: { cgpa: -1, marks: -1, _id: -1 } },
+            { $limit: limit + 1 },
+            {
+                $project: {
+                    // Keep fields required by the frontend UI.
+                    _id: 1,
+                    leaderboardId: 1,
+                    userId: 1,
+                    name: 1,
+                    cgpa: 1,
+                    marks: 1,
+                    useMarks: 1,
+                    userPicture: 1,
+                    likedBy: 1,
+                    dislikedBy: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    rank: 1,
+                },
+            }
+        );
+
+        const result = await LeaderboardEntry.aggregate(pipeline);
+
+        const hasMore = result.length > limit;
+        const items = hasMore ? result.slice(0, limit) : result;
+
+        let nextCursor = null;
+        if (hasMore) {
+            const last = items[items.length - 1];
+            nextCursor = encodeCursor({
+                cgpa: last.cgpa,
+                marks: last.marks,
+                id: last._id.toString(),
+                page: page + 1,
+            });
+        }
+
+        const response = {
+            items,
+            hasMore,
+            nextCursor,
+            page,
+        };
+
+        if (canCache) {
+            const [banVersion, entriesVersion] = await Promise.all([
+                getBanVersion(redisClient),
+                getEntriesVersion(redisClient, leaderboardId),
+            ]);
+            const cacheKey = `lb:${leaderboardId}:entries:page:${page}:limit:${limit}:banV:${banVersion}:v:${entriesVersion}`;
+            await require('../config/redis').cacheSet(redisClient, cacheKey, response, Number(process.env.REDIS_CACHE_TTL_SECONDS) || 45);
+        }
+
+        res.json(response);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -57,10 +232,13 @@ router.post('/submit', auth, async (req, res) => {
 
         await entry.save();
 
-        // Emit real-time update for THIS leaderboard
+        // Invalidate cached pages (version bump)
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) await invalidateEntriesCache(redisClient, leaderboardId);
+
         const io = req.app.get('socketio');
-        const allEntries = await LeaderboardEntry.find({ leaderboardId }).sort({ cgpa: -1, marks: -1 });
-        io.emit(`leaderboardUpdate:${leaderboardId}`, allEntries);
+        io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
 
         res.status(201).json(entry);
     } catch (err) {
@@ -89,9 +267,13 @@ router.put('/edit/:id', auth, async (req, res) => {
 
         await entry.save();
 
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
+
+        const leaderboardId = entry.leaderboardId;
         const io = req.app.get('socketio');
-        const allEntries = await LeaderboardEntry.find({ leaderboardId: entry.leaderboardId }).sort({ cgpa: -1, marks: -1 });
-        io.emit(`leaderboardUpdate:${entry.leaderboardId}`, allEntries);
+        io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
 
         res.json(entry);
     } catch (err) {
@@ -120,9 +302,12 @@ router.delete('/delete/:id', auth, async (req, res) => {
 
         await LeaderboardEntry.findByIdAndDelete(req.params.id);
 
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) await invalidateEntriesCache(redisClient, leaderboardId);
+
         const io = req.app.get('socketio');
-        const allEntries = await LeaderboardEntry.find({ leaderboardId }).sort({ cgpa: -1 });
-        io.emit(`leaderboardUpdate:${leaderboardId}`, allEntries);
+        io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
 
         res.json({ message: 'Entry deleted successfully' });
     } catch (err) {
@@ -172,14 +357,12 @@ router.post('/react/:id', auth, async (req, res) => {
 
         await entry.save();
 
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
+
         const io = req.app.get('socketio');
-        io.emit(`reactionUpdate:${entry.leaderboardId}`, {
-            entryId: entry._id,
-            likedBy: entry.likedBy,
-            hearts: entry.likedBy.length,
-            dislikedBy: entry.dislikedBy,
-            dislikes: entry.dislikedBy.length
-        });
+        io.to(`leaderboard:${entry.leaderboardId}`).emit('leaderboardChanged', { leaderboardId: entry.leaderboardId });
 
         res.json({ hearts: entry.likedBy.length, isLiked, dislikes: entry.dislikedBy.length });
     } catch (err) {
@@ -230,14 +413,12 @@ router.post('/dislike/:id', auth, async (req, res) => {
 
         await entry.save();
 
+        const { getRedisClient } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
+
         const io = req.app.get('socketio');
-        io.emit(`reactionUpdate:${entry.leaderboardId}`, {
-            entryId: entry._id,
-            likedBy: entry.likedBy,
-            hearts: entry.likedBy.length,
-            dislikedBy: entry.dislikedBy,
-            dislikes: entry.dislikedBy.length
-        });
+        io.to(`leaderboard:${entry.leaderboardId}`).emit('leaderboardChanged', { leaderboardId: entry.leaderboardId });
 
         res.json({ hearts: entry.likedBy.length, dislikes: entry.dislikedBy.length, isDisliked });
     } catch (err) {

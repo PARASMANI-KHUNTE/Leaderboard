@@ -9,6 +9,9 @@ const MongoStore = require('connect-mongo').default || require('connect-mongo');
 require('dotenv').config();
 require('./config/passport');
 const connectDB = require('./config/db');
+const { initRedis } = require('./config/redis');
+const { RedisStore } = require('rate-limit-redis');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
@@ -50,58 +53,111 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
-// General API Rate Limiter (100 requests per 15 minutes per IP)
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: 'Too many requests from this IP, please try again after 15 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+const createHybridKey = (req) => {
+    // Prefer userId when JWT is present, else fall back to IP+User-Agent.
+    try {
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+        if (token) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (decoded?.id) return `user:${decoded.id}`;
+        }
+    } catch (e) {
+        // ignore invalid token and fall back
+    }
+    // Normalize IPv6/IPv4 addressing so rate-limit can't be bypassed.
+    const ip = ipKeyGenerator(req.ip || 'unknown_ip');
+    const ua = req.headers?.['user-agent'] || 'unknown_ua';
+    return `ip:${ip}:ua:${ua}`;
+};
 
-// Stricter Auth Rate Limiter (50 requests per 15 minutes)
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: 'Too many authentication attempts, please try again later',
-});
+const start = async () => {
+    const redisClient = await initRedis();
 
-// App routes
-app.use('/auth', authLimiter, require('./routes/auth'));
-app.use('/api/', apiLimiter); // Apply general limiter to all /api routes
-app.use('/api/leaderboards', require('./routes/leaderboards'));
-app.use('/api/leaderboard', require('./routes/leaderboard'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/feedback', require('./routes/feedback'));
+    const rateLimitPrefix = process.env.RATE_LIMIT_PREFIX || 'rl:';
 
-// Health check endpoints
-app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() }));
-app.get('/test', (req, res) => res.status(200).json({ message: 'API is working correctly' }));
-app.get('/', (req, res) => res.status(200).send('API Server is running'));
+    // Redis-backed store for express-rate-limit (optional).
+    // Create a unique store per limiter (express-rate-limit validation requires this).
+    const canUseRateLimitRedisStore = redisClient && typeof redisClient.sendCommand === 'function';
 
-// Connect to DB
-connectDB();
+    const apiRedisStore = canUseRateLimitRedisStore
+        ? new RedisStore({
+            sendCommand: (...args) => redisClient.sendCommand(args),
+            prefix: `${rateLimitPrefix}rate:api:`,
+        })
+        : undefined;
 
-io.on('connection', (socket) => {
-    console.log('New client connected');
+    const authRedisStore = canUseRateLimitRedisStore
+        ? new RedisStore({
+            sendCommand: (...args) => redisClient.sendCommand(args),
+            prefix: `${rateLimitPrefix}rate:auth:`,
+        })
+        : undefined;
 
-    socket.on('joinAdmin', () => {
-        socket.join('admins');
-        console.log('Admin joined secure room');
+    // General API Rate Limiter (100 requests per 15 minutes per key)
+    const apiLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: 'Too many requests, please try again after 15 minutes',
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: createHybridKey,
+        store: apiRedisStore,
     });
 
-    socket.on('joinUser', (userId) => {
-        socket.join(`user:${userId}`);
-        console.log(`User joined personal room: ${userId}`);
+    // Stricter Auth Rate Limiter (50 requests per 15 minutes per key)
+    const authLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 50,
+        message: 'Too many authentication attempts, please try again later',
+        keyGenerator: createHybridKey,
+        store: authRedisStore,
     });
 
-    socket.on('disconnect', () => {
-        console.log('Client disconnected');
-    });
-});
+    // App routes
+    app.use('/auth', authLimiter, require('./routes/auth'));
+    app.use('/api/', apiLimiter); // Apply general limiter to all /api routes
+    app.use('/api/leaderboards', require('./routes/leaderboards'));
+    app.use('/api/leaderboard', require('./routes/leaderboard'));
+    app.use('/api/admin', require('./routes/admin'));
+    app.use('/api/reports', require('./routes/reports'));
+    app.use('/api/feedback', require('./routes/feedback'));
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    // Health check endpoints
+    app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() }));
+    app.get('/test', (req, res) => res.status(200).json({ message: 'API is working correctly' }));
+    app.get('/', (req, res) => res.status(200).send('API Server is running'));
+
+    // Connect to DB
+    await connectDB();
+
+    io.on('connection', (socket) => {
+        console.log('New client connected');
+
+        socket.on('joinAdmin', () => {
+            socket.join('admins');
+            console.log('Admin joined secure room');
+        });
+
+        socket.on('joinUser', (userId) => {
+            socket.join(`user:${userId}`);
+            console.log(`User joined personal room: ${userId}`);
+        });
+
+        socket.on('joinLeaderboard', (leaderboardId) => {
+            if (!leaderboardId) return;
+            socket.join(`leaderboard:${leaderboardId}`);
+            console.log(`Client joined leaderboard room: ${leaderboardId}`);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Client disconnected');
+        });
+    });
+
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+};
+
+start();

@@ -63,12 +63,16 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
         // Optimistic Update
         const targetEntry = entries.find(entry => entry._id === id);
         if (targetEntry) {
-            const hasLiked = targetEntry.likedBy?.includes(user.id);
-            const hasDisliked = targetEntry.dislikedBy?.includes(user.id);
+            const hasLiked = (targetEntry.likedBy || []).some(uId => String(uId) === String(user.id));
+            const hasDisliked = (targetEntry.dislikedBy || []).some(uId => String(uId) === String(user.id));
             
             // Replicate server mutual exclusion logic locally
-            const simulatedLikedBy = hasLiked ? targetEntry.likedBy.filter(uId => uId !== user.id) : [...(targetEntry.likedBy || []), user.id];
-            const simulatedDislikedBy = hasDisliked ? targetEntry.dislikedBy.filter(uId => uId !== user.id) : [...(targetEntry.dislikedBy || [])];
+            const simulatedLikedBy = hasLiked
+                ? (targetEntry.likedBy || []).filter(uId => String(uId) !== String(user.id))
+                : [...(targetEntry.likedBy || []), user.id];
+            const simulatedDislikedBy = hasDisliked
+                ? (targetEntry.dislikedBy || []).filter(uId => String(uId) !== String(user.id))
+                : [...(targetEntry.dislikedBy || [])];
             
             // We temporarily mutate just the local prop to make it *feel* instant. 
             // In a strict React app with parent state, we'd fire an `onUpdate` prop.
@@ -93,12 +97,16 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
         // Optimistic Update
         const targetEntry = entries.find(entry => entry._id === id);
         if (targetEntry) {
-            const hasLiked = targetEntry.likedBy?.includes(user.id);
-            const hasDisliked = targetEntry.dislikedBy?.includes(user.id);
+            const hasLiked = (targetEntry.likedBy || []).some(uId => String(uId) === String(user.id));
+            const hasDisliked = (targetEntry.dislikedBy || []).some(uId => String(uId) === String(user.id));
             
             // Replicate server mutual exclusion logic locally
-            const simulatedLikedBy = hasLiked ? targetEntry.likedBy.filter(uId => uId !== user.id) : [...(targetEntry.likedBy || [])];
-            const simulatedDislikedBy = hasDisliked ? targetEntry.dislikedBy.filter(uId => uId !== user.id) : [...(targetEntry.dislikedBy || []), user.id];
+            const simulatedLikedBy = hasLiked
+                ? (targetEntry.likedBy || []).filter(uId => String(uId) !== String(user.id))
+                : [...(targetEntry.likedBy || [])];
+            const simulatedDislikedBy = hasDisliked
+                ? (targetEntry.dislikedBy || []).filter(uId => String(uId) !== String(user.id))
+                : [...(targetEntry.dislikedBy || []), user.id];
             
             targetEntry.likedBy = simulatedLikedBy;
             targetEntry.dislikedBy = simulatedDislikedBy;
@@ -127,21 +135,12 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                 </thead>
                 <tbody>
                     {entries.map((entry, index) => {
-                        // Calculate rank with ties
-                        let displayRank = index + 1;
+                        // Visual tie grouping only; global rank comes from backend (`entry.rank`).
                         let isTie = false;
                         if (index > 0) {
                             const prev = entries[index - 1];
                             if (entry.cgpa === prev.cgpa && entry.marks === prev.marks) {
                                 isTie = true;
-                                // Find the first entry in this tie group to get the rank
-                                let tieIndex = index - 1;
-                                while (tieIndex > 0 &&
-                                    entries[tieIndex].cgpa === entries[tieIndex - 1].cgpa &&
-                                    entries[tieIndex].marks === entries[tieIndex - 1].marks) {
-                                    tieIndex--;
-                                }
-                                displayRank = tieIndex + 1;
                             }
                         }
 
@@ -150,7 +149,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                             entry.cgpa === entries[index + 1].cgpa &&
                             entry.marks === entries[index + 1].marks;
 
-                        const rowRank = displayRank;
+                        const rowRank = typeof entry.rank === 'number' ? entry.rank : null;
 
                         return (
                             <motion.tr
@@ -174,7 +173,9 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                                         ) : rowRank === 3 ? (
                                             <Medal className="w-6 h-6 text-amber-600" />
                                         ) : (
-                                            <span className="text-slate-500 font-mono">#{rowRank}</span>
+                                            <span className="text-slate-500 font-mono">
+                                                {rowRank !== null ? `#${rowRank}` : '#--'}
+                                            </span>
                                         )}
                                         {(isTie || isTieWithNext) && (
                                             <div className="absolute -left-3 top-0 bottom-0 w-1 bg-indigo-500/40 rounded-full"></div>
@@ -228,20 +229,20 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-3">
                                         <button onClick={(e) => handleReact(entry._id, e)} className="flex items-center gap-1.5 group/heart">
-                                            <Heart className={`w-4 h-4 transition-all ${entry.likedBy?.includes(user?.id) ? 'fill-red-500 text-red-500 scale-110' : 'text-slate-500 group-hover/heart:text-red-400'}`} />
+                                            <Heart className={`w-4 h-4 transition-all ${ (entry.likedBy || []).some(uId => String(uId) === String(user?.id)) ? 'fill-red-500 text-red-500 scale-110' : 'text-slate-500 group-hover/heart:text-red-400'}`} />
                                             <span className="text-xs font-bold text-slate-500 font-mono">{entry.likedBy?.length || 0}</span>
                                         </button>
                                         <button onClick={(e) => handleDislike(entry._id, e)} className="flex items-center gap-1.5 group/dislike">
-                                            <ThumbsDown className={`w-4 h-4 transition-all ${entry.dislikedBy?.includes(user?.id) ? 'fill-indigo-500 text-indigo-500 scale-110' : 'text-slate-500 group-hover/dislike:text-indigo-400'}`} />
+                                            <ThumbsDown className={`w-4 h-4 transition-all ${ (entry.dislikedBy || []).some(uId => String(uId) === String(user?.id)) ? 'fill-indigo-500 text-indigo-500 scale-110' : 'text-slate-500 group-hover/dislike:text-indigo-400'}`} />
                                             <span className="text-xs font-bold text-slate-500 font-mono">{entry.dislikedBy?.length || 0}</span>
                                         </button>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                        {(user && (user.id === entry.userId || user.id === leaderboardCreatorId)) ? (
+                                        {(user && (String(user.id) === String(entry.userId) || String(user.id) === String(leaderboardCreatorId))) ? (
                                             <>
-                                                {user.id === entry.userId && (
+                                                {String(user.id) === String(entry.userId) && (
                                                     <button onClick={(e) => { e.stopPropagation(); onEdit(entry); }} className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all"><Edit2 className="w-4 h-4" /></button>
                                                 )}
                                                 <button onClick={(e) => { e.stopPropagation(); onDelete(entry._id); }} className="p-2 bg-red-500/10 rounded-lg text-red-500 hover:bg-red-500/20 transition-all"><Trash2 className="w-4 h-4" /></button>
