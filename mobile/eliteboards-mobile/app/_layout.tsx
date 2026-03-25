@@ -25,7 +25,7 @@ function Navbar() {
         {/* Logo */}
         <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
           <View style={styles.logoIcon}>
-            <Text style={styles.logoIconText}>🏆</Text>
+            <Text style={styles.logoIconText}>⭐</Text>
           </View>
           <View>
             <Text style={styles.logoText}>EliteBoards</Text>

@@ -7,8 +7,24 @@ const router = express.Router();
 router.get('/google',
     (req, res, next) => {
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
+        // Ensure `redirect_uri` is always present in the Google OAuth request.
+        // Passport uses `callbackURL` as `redirect_uri`; some deployments may not have
+        // `GOOGLE_CALLBACK_URL` configured, so we compute it from the incoming request.
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        const proto = forwardedProto
+            ? String(forwardedProto).split(',')[0].trim()
+            : req.protocol;
+        const host = req.get('host');
+        // Render commonly terminates TLS at the proxy. If the proxy headers
+        // are missing for some reason, ensure we still use https.
+        const safeProto =
+            proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
+        const callbackURL =
+            process.env.GOOGLE_CALLBACK_URL ||
+            `${safeProto}://${host}/auth/google/callback`;
         passport.authenticate('google', {
             scope: ['profile', 'email'],
+            callbackURL,
             state: platform,
         })(req, res, next);
     });

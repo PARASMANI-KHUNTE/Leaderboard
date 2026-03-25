@@ -12,7 +12,7 @@ export default function LoginScreen() {
   return (
     <View style={[s.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={s.hero}>
-        <View style={s.logoIcon}><Text style={s.logoEmoji}>🏆</Text></View>
+        <View style={s.logoIcon}><Text style={s.logoEmoji}>⭐</Text></View>
         <View style={s.titleRow}>
           <Text style={s.titleElite}>Elite</Text>
           <Text style={s.titleBoards}>Boards</Text>
