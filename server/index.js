@@ -117,6 +117,8 @@ const start = async () => {
 
     // App routes
     app.use('/auth', authLimiter, require('./routes/auth'));
+    // Compatibility alias so mobile can call `POST /api/auth/exchange`.
+    app.use('/api/auth', authLimiter, require('./routes/auth'));
     app.use('/api/', apiLimiter); // Apply general limiter to all /api routes
     app.use('/api/leaderboards', require('./routes/leaderboards'));
     app.use('/api/leaderboard', require('./routes/leaderboard'));
