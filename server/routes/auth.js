@@ -7,16 +7,11 @@ const router = express.Router();
 router.get('/google',
     (req, res, next) => {
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
-        // Ensure `redirect_uri` is always present in the Google OAuth request.
-        // Passport uses `callbackURL` as `redirect_uri`; some deployments may not have
-        // `GOOGLE_CALLBACK_URL` configured, so we compute it from the incoming request.
         const forwardedProto = req.headers['x-forwarded-proto'];
         const proto = forwardedProto
             ? String(forwardedProto).split(',')[0].trim()
             : req.protocol;
         const host = req.get('host');
-        // Render commonly terminates TLS at the proxy. If the proxy headers
-        // are missing for some reason, ensure we still use https.
         const safeProto =
             proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
         const callbackURL =
@@ -25,6 +20,12 @@ router.get('/google',
         
         console.log('[OAuth] Init - proto:', proto, 'host:', host, 'safeProto:', safeProto, 'callbackURL:', callbackURL, 'GOOGLE_CALLBACK_URL env:', process.env.GOOGLE_CALLBACK_URL);
         
+        // Store the client's dynamic deep-link redirect URL in the session so the callback can use it.
+        // This allows both Expo Go (exp://) and standalone (eliteboards://) to work with the same server.
+        if (platform === 'mobile' && req.query.redirect) {
+            req.session.mobileRedirectUrl = req.query.redirect;
+        }
+
         passport.authenticate('google', {
             scope: ['profile', 'email'],
             callbackURL,
@@ -58,8 +59,12 @@ router.get('/google/callback',
                 used: false,
             });
 
-            const deepLinkBase = process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
+            // Use the redirect URL the client sent (stored in the session during /auth/google).
+            // Falls back to the env var so existing standalone builds still work.
+            const deepLinkBase = req.session?.mobileRedirectUrl || process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
             console.log(`[OAuth Callback] Redirecting mobile user to deep link: ${deepLinkBase}`);
+            // Clear the stored redirect URL from the session
+            if (req.session?.mobileRedirectUrl) delete req.session.mobileRedirectUrl;
             return res.redirect(`${deepLinkBase}?code=${encodeURIComponent(oneTimeCode)}`);
         } catch (err) {
             console.error('[OAuth Callback ERROR]', err);
