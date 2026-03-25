@@ -9,6 +9,7 @@ import AuthProvider, { useAuth } from '../src/providers/AuthProvider';
 import RealtimeProvider from '../src/realtime/RealtimeProvider';
 import OfflineProvider from '../src/offline/OfflineProvider';
 import Loading from './loading'; // Import the custom loading screen
+import * as Updates from 'expo-updates';
 
 /* ─── Premium Navbar ─── */
 function Navbar() {
@@ -114,6 +115,25 @@ function Navbar() {
 
 function AppContent() {
   const { loading } = useAuth();
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+
+  // Instant update checker
+  React.useEffect(() => {
+    if (__DEV__) return; // Don't check for updates in development
+    
+    async function onFetchUpdateAsync() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          setIsUpdateAvailable(true);
+        }
+      } catch (error) {
+        // You can also handle errors here
+      }
+    }
+    onFetchUpdateAsync();
+  }, []);
 
   // If auth is loading, show the full-screen animated Loading component
   if (loading) {
@@ -130,6 +150,18 @@ function AppContent() {
       <StatusBar style="light" />
       <Navbar />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#020617' } }} />
+
+      {/* Floating Update Notification */}
+      {isUpdateAvailable && (
+        <View style={styles.updateBannerContainer}>
+          <Pressable 
+            style={styles.updateBanner} 
+            onPress={() => Updates.reloadAsync()}
+          >
+            <Text style={styles.updateBannerText}>New update available 🚀 Restart to apply</Text>
+          </Pressable>
+        </View>
+      )}
     </>
   );
 }
@@ -285,5 +317,36 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontWeight: '700',
     fontSize: 13,
+  },
+
+  /* Update Notification */
+  updateBannerContainer: {
+    position: 'absolute',
+    bottom: 100, // Above the create button/fab
+    left: 20,
+    right: 20,
+    zIndex: 9999,
+  },
+  updateBanner: {
+    backgroundColor: '#4f46e5',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  updateBannerText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '900',
+    textAlign: 'center',
   },
 });
