@@ -1,19 +1,29 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, View, Image, Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 type StarSpec = {
   id: number;
   leftPct: number;
+  topPct: number;
   size: number;
   delayMs: number;
-  rotDeg: number;
+  duration: number;
 };
+
+const LOADING_MESSAGES = [
+  "INITIALIZING_QUANTUM_LEADERS...",
+  "SYNCING_REALTIME_ENGINES...",
+  "OPTIMIZING_PREMIUM_RANKINGS...",
+  "VERIFYING_SECURE_SESSIONS...",
+  "CALIBRATING_ELITE_METRICS...",
+  "LOADING_SUCCESS_PATTERNS...",
+];
 
 function Star({ spec }: { spec: StarSpec }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.6)).current;
-  const rotate = useRef(new Animated.Value(0)).current; // 0..1
+  const scale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -21,68 +31,33 @@ function Star({ spec }: { spec: StarSpec }) {
         Animated.delay(spec.delayMs),
         Animated.parallel([
           Animated.timing(opacity, {
-            toValue: 1,
-            duration: 200,
-            easing: Easing.out(Easing.quad),
+            toValue: Math.random() * 0.7 + 0.3,
+            duration: spec.duration / 2,
             useNativeDriver: true,
           }),
           Animated.timing(scale, {
-            toValue: 1.15,
-            duration: 220,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(rotate, {
             toValue: 1,
-            duration: 520,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(translateY, {
-            toValue: -26,
-            duration: 650,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0.25,
-            duration: 650,
-            easing: Easing.out(Easing.quad),
+            duration: spec.duration / 2,
             useNativeDriver: true,
           }),
         ]),
         Animated.parallel([
           Animated.timing(opacity, {
             toValue: 0,
-            duration: 180,
-            easing: Easing.in(Easing.quad),
+            duration: spec.duration / 2,
             useNativeDriver: true,
           }),
           Animated.timing(scale, {
-            toValue: 0.6,
-            duration: 180,
-            easing: Easing.in(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
             toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rotate, {
-            toValue: 0,
-            duration: 0,
+            duration: spec.duration / 2,
             useNativeDriver: true,
           }),
         ]),
       ])
     );
-
     animation.start();
     return () => animation.stop();
-  }, [opacity, translateY, scale, rotate, spec.delayMs, spec.rotDeg]);
+  }, [spec.duration, spec.delayMs]);
 
   return (
     <Animated.View
@@ -90,49 +65,153 @@ function Star({ spec }: { spec: StarSpec }) {
         styles.star,
         {
           left: `${spec.leftPct}%`,
+          top: `${spec.topPct}%`,
           width: spec.size,
           height: spec.size,
           opacity,
-          transform: [
-            { translateY },
-            { scale },
-            { rotate: rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', `${spec.rotDeg}deg`] }) },
-          ],
+          transform: [{ scale }],
         },
       ]}
     >
-      <Text style={{ fontSize: spec.size, lineHeight: spec.size }}>⭐</Text>
+      <View style={[styles.starDot, { width: spec.size, height: spec.size }]} />
     </Animated.View>
   );
 }
 
 export default function Loading() {
-  const stars = useMemo<StarSpec[]>(
-    () =>
-      Array.from({ length: 10 }).map((_, i) => {
-        const leftPct = 10 + Math.random() * 80;
-        const size = 16 + Math.random() * 18;
-        const delayMs = i * 160 + Math.random() * 180;
-        const rotDeg = -90 + Math.random() * 180;
-        return { id: i, leftPct, size, delayMs, rotDeg };
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.9)).current;
+  const progressWidth = useRef(new Animated.Value(0)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  
+  const [msgIndex, setMsgIndex] = useState(0);
+  const msgOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Initial entry animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
       }),
-    []
-  );
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowOpacity, {
+        toValue: 0.6,
+        duration: 1500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(progressWidth, {
+        toValue: 1,
+        duration: 4000,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: false, // width doesn't support native driver
+      }),
+    ]).start();
+
+    // Loop for "breathing" logo
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoScale, {
+          toValue: 1.05,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoScale, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Loop for changing messages
+    const msgInterval = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(msgOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.delay(100),
+      ]).start(() => {
+        setMsgIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+        Animated.timing(msgOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      });
+    }, 2800);
+
+    return () => clearInterval(msgInterval);
+  }, []);
+
+  const stars = useMemo<StarSpec[]>(() => 
+    Array.from({ length: 40 }).map((_, i) => ({
+      id: i,
+      leftPct: Math.random() * 100,
+      topPct: Math.random() * 100,
+      size: Math.random() * 3 + 1,
+      delayMs: Math.random() * 3000,
+      duration: Math.random() * 3000 + 2000,
+    })), 
+  []);
 
   return (
     <View style={styles.container}>
-      <View style={styles.logoWrap}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>⭐</Text>
-        </View>
-        <Text style={styles.logoTitle}>EliteBoards</Text>
-        <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
+      {/* Background Decor */}
+      <View style={StyleSheet.absoluteFill}>
+        {stars.map((s) => <Star key={s.id} spec={s} />)}
       </View>
 
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        {stars.map((spec) => (
-          <Star key={spec.id} spec={spec} />
-        ))}
+      {/* Central Glow */}
+      <Animated.View 
+        style={[
+          styles.radialGlow, 
+          { opacity: glowOpacity, transform: [{ scale: logoScale }] }
+        ]} 
+      />
+
+      {/* Content */}
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+          <Image 
+            source={require('../assets/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        <View style={styles.textWrap}>
+          <Text style={styles.brandTitle}>EliteBoards</Text>
+          <Text style={styles.brandTagline}>PREMIUM ACADEMIC RANKINGS</Text>
+        </View>
+
+        {/* Progress System */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBarBg}>
+            <Animated.View 
+              style={[
+                styles.progressBarFill, 
+                { 
+                  width: progressWidth.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '85%']
+                  }) 
+                }
+              ]} 
+            />
+          </View>
+          <Animated.Text style={[styles.statusText, { opacity: msgOpacity }]}>
+            {LOADING_MESSAGES[msgIndex]}
+          </Animated.Text>
+        </View>
+      </Animated.View>
+
+      {/* Footer Branding */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>POWERED BY ELITEBOARD ARCHITECTURE</Text>
+        <Text style={styles.versionText}>V1.0.4-STABLE</Text>
       </View>
     </View>
   );
@@ -141,47 +220,99 @@ export default function Loading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b1020',
+    backgroundColor: '#020617',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoWrap: {
+  radialGlow: {
+    position: 'absolute',
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: (width * 0.8) / 2,
+    backgroundColor: 'rgba(79, 70, 229, 0.15)',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 100,
+    elevation: 20,
+  },
+  content: {
     alignItems: 'center',
+    zIndex: 10,
   },
-  logoCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 24,
-    backgroundColor: 'rgba(79, 70, 229, 0.22)',
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.28)',
+  logo: {
+    width: 160,
+    height: 160,
+    marginBottom: 20,
+  },
+  textWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 40,
   },
-  logoEmoji: {
-    fontSize: 44,
-    includeFontPadding: false,
-  },
-  logoTitle: {
-    color: '#c7d2fe',
-    fontSize: 28,
+  brandTitle: {
+    color: '#e2e8f0',
+    fontSize: 36,
     fontWeight: '900',
-    letterSpacing: -0.5,
+    letterSpacing: -1,
+    textTransform: 'uppercase',
   },
-  logoSub: {
-    color: 'rgba(99, 102, 241, 0.55)',
+  brandTagline: {
+    color: 'rgba(99, 102, 241, 0.6)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 4,
+    marginTop: 4,
+  },
+  progressContainer: {
+    width: width * 0.7,
+    alignItems: 'center',
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#6366f1',
+    borderRadius: 2,
+  },
+  statusText: {
+    color: '#64748b',
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 3,
-    marginTop: 4,
+    letterSpacing: 2,
+    fontFamily: 'System',
+    textAlign: 'center',
+    height: 20,
   },
   star: {
     position: 'absolute',
-    top: '44%',
-    marginLeft: -10,
+  },
+  starDot: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 50,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  footerText: {
+    color: 'rgba(71, 85, 105, 0.6)',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 2.5,
+  },
+  versionText: {
+    color: 'rgba(71, 85, 105, 0.4)',
+    fontSize: 7,
+    fontWeight: '700',
+    marginTop: 6,
+    letterSpacing: 1,
   },
 });
 

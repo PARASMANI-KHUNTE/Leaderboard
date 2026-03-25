@@ -32,29 +32,36 @@ router.get('/google',
 router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login' }),
     async (req, res) => {
-        const platform = req.query?.state === 'mobile' ? 'mobile' : 'web';
+        try {
+            const platform = req.query?.state === 'mobile' ? 'mobile' : 'web';
+            console.log(`[OAuth Callback] platform=${platform} user=${req.user?._id}`);
 
-        // Web continues to use the existing token-in-URL flow for compatibility.
-        if (platform !== 'mobile') {
-            const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            return res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}`);
+            // Web continues to use the existing token-in-URL flow for compatibility.
+            if (platform !== 'mobile') {
+                const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+                return res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}`);
+            }
+
+            // Mobile gets a short-lived one-time code (no JWT in URL).
+            const AuthCode = require('../models/AuthCode');
+            const oneTimeCode = crypto.randomBytes(24).toString('hex'); // 48-char hex
+            const codeHash = crypto.createHash('sha256').update(oneTimeCode).digest('hex');
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+            await AuthCode.create({
+                userId: req.user._id,
+                codeHash,
+                expiresAt,
+                used: false,
+            });
+
+            const deepLinkBase = process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
+            console.log(`[OAuth Callback] Redirecting mobile user to deep link: ${deepLinkBase}`);
+            return res.redirect(`${deepLinkBase}?code=${encodeURIComponent(oneTimeCode)}`);
+        } catch (err) {
+            console.error('[OAuth Callback ERROR]', err);
+            return res.status(500).json({ error: 'OAuth callback failed', message: err.message });
         }
-
-        // Mobile gets a short-lived one-time code (no JWT in URL).
-        const AuthCode = require('../models/AuthCode');
-        const oneTimeCode = crypto.randomBytes(24).toString('hex'); // 48-char hex
-        const codeHash = crypto.createHash('sha256').update(oneTimeCode).digest('hex');
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-        await AuthCode.create({
-            userId: req.user._id,
-            codeHash,
-            expiresAt,
-            used: false,
-        });
-
-        const deepLinkBase = process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
-        return res.redirect(`${deepLinkBase}?code=${encodeURIComponent(oneTimeCode)}`);
     });
 
 // Exchange one-time code for a JWT (used by the mobile deep link flow).
@@ -97,6 +104,27 @@ router.post('/exchange', async (req, res) => {
 router.get('/logout', (req, res) => {
     req.logout();
     res.redirect(process.env.CLIENT_URL);
+});
+
+// Diagnostic endpoint — shows which critical env vars are configured (NOT the values)
+router.get('/debug', (req, res) => {
+    const placeholders = ['your_session_secret', 'your_jwt_secret'];
+    const check = (key) => {
+        const val = process.env[key];
+        if (!val) return 'MISSING';
+        if (placeholders.includes(val)) return 'PLACEHOLDER (not secure!)';
+        return 'SET';
+    };
+    res.json({
+        GOOGLE_CLIENT_ID: check('GOOGLE_CLIENT_ID'),
+        GOOGLE_CLIENT_SECRET: check('GOOGLE_CLIENT_SECRET'),
+        GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'MISSING',
+        SESSION_SECRET: check('SESSION_SECRET'),
+        JWT_SECRET: check('JWT_SECRET'),
+        CLIENT_URL: process.env.CLIENT_URL || 'MISSING',
+        MONGODB_URI: process.env.MONGODB_URI ? (process.env.MONGODB_URI.startsWith('mongodb://localhost') ? 'LOCAL (will fail on Render!)' : 'REMOTE') : 'MISSING',
+        MOBILE_DEEPLINK_URL: process.env.MOBILE_DEEPLINK_URL || 'MISSING (will default to eliteboards://login-success)',
+    });
 });
 
 const { auth } = require('../middleware/auth');

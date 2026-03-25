@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, Image as RNImage } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '../src/providers/AuthProvider';
@@ -158,7 +158,12 @@ export default function Home() {
               <Text style={styles.realtimeText}>REAL-TIME SYSTEMS ACTIVE</Text>
             </View>
 
-            {/* Title */}
+            {/* Logo and Title */}
+            <RNImage 
+              source={require('../assets/logo.png')} 
+              style={styles.heroLogo} 
+              resizeMode="contain"
+            />
             <View style={styles.titleRow}>
               <Text style={styles.titleElite}>Elite</Text>
               <Text style={styles.titleBoards}>Boards</Text>
@@ -248,13 +253,18 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0b1020' },
-  centerWrap: { flex: 1, backgroundColor: '#0b1020', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  screen: { flex: 1, backgroundColor: '#020617' },
+  centerWrap: { flex: 1, backgroundColor: '#020617', alignItems: 'center', justifyContent: 'center', padding: 20 },
   errorTitle: { color: '#a5b4fc', fontSize: 28, fontWeight: '900' },
   errorSub: { color: '#94a3b8', fontSize: 14, marginTop: 8, textAlign: 'center' },
 
   /* Hero */
-  hero: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16, alignItems: 'center' },
+  hero: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 16, alignItems: 'center' },
+  heroLogo: {
+    width: 100,
+    height: 100,
+    marginBottom: 12,
+  },
   realtimeBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 5,

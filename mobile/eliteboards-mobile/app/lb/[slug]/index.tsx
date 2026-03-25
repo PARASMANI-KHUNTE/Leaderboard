@@ -497,7 +497,7 @@ export default function LeaderboardScreen() {
 
 /* ─── Styles ─── */
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0b1020' },
+  screen: { flex: 1, backgroundColor: '#020617' },
 
   /* Top bar */
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, flexWrap: 'wrap', gap: 8 },
@@ -516,7 +516,7 @@ const s = StyleSheet.create({
   /* Title */
   titleWrap: { alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline' },
-  titleElite: { color: '#6366f1', fontSize: 28, fontWeight: '900', fontStyle: 'italic' },
+  titleElite: { color: '#a5b4fc', fontSize: 28, fontWeight: '900', fontStyle: 'italic' },
   titleName: { color: 'white', fontSize: 28, fontWeight: '900' },
   downBadge: { backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, marginTop: 6 },
   downBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
@@ -576,7 +576,7 @@ const s = StyleSheet.create({
   socialBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-    borderWidth: 1, borderColor: '#1f2a4d', backgroundColor: '#0b1020',
+    borderWidth: 1, borderColor: '#1f2a4d', backgroundColor: '#020617',
   },
   socialBtnActive: { borderColor: '#7c3aed', backgroundColor: '#1b1147' },
   socialBtnActiveBlue: { borderColor: '#4f46e5', backgroundColor: '#1b1147' },

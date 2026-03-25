@@ -8,6 +8,7 @@ import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import AuthProvider, { useAuth } from '../src/providers/AuthProvider';
 import RealtimeProvider from '../src/realtime/RealtimeProvider';
 import OfflineProvider from '../src/offline/OfflineProvider';
+import Loading from './loading'; // Import the custom loading screen
 
 /* ─── Premium Navbar ─── */
 function Navbar() {
@@ -24,9 +25,11 @@ function Navbar() {
       <View style={[styles.nav, { paddingTop: insets.top + 6 }]}>
         {/* Logo */}
         <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
-          <View style={styles.logoIcon}>
-            <Text style={styles.logoIconText}>⭐</Text>
-          </View>
+          <Image 
+            source={require('../assets/logo.png')} 
+            style={styles.logoImageSmall} 
+            resizeMode="contain"
+          />
           <View>
             <Text style={styles.logoText}>EliteBoards</Text>
             <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
@@ -109,19 +112,39 @@ function Navbar() {
   );
 }
 
+function AppContent() {
+  const { loading } = useAuth();
+
+  // If auth is loading, show the full-screen animated Loading component
+  if (loading) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Loading />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <StatusBar style="light" />
+      <Navbar />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#020617' } }} />
+    </>
+  );
+}
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0b1020' }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#020617' }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <OfflineProvider>
               <RealtimeProvider>
-                <StatusBar style="light" />
-                <Navbar />
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0b1020' } }} />
+                <AppContent />
               </RealtimeProvider>
             </OfflineProvider>
           </AuthProvider>
@@ -133,7 +156,7 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   nav: {
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    backgroundColor: 'rgba(2, 6, 23, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
     flexDirection: 'row',
@@ -145,17 +168,12 @@ const styles = StyleSheet.create({
   logoWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  logoIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#4f46e5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImageSmall: {
+    width: 32,
+    height: 32,
   },
-  logoIconText: { fontSize: 18 },
   logoText: {
     color: '#c7d2fe',
     fontSize: 18,

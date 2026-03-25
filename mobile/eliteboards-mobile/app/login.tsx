@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ export default function LoginScreen() {
   return (
     <View style={[s.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={s.hero}>
-        <View style={s.logoIcon}><Text style={s.logoEmoji}>⭐</Text></View>
+        <View style={s.logoIcon}><Text style={s.logoEmoji}>🏆</Text></View>
         <View style={s.titleRow}>
           <Text style={s.titleElite}>Elite</Text>
           <Text style={s.titleBoards}>Boards</Text>
