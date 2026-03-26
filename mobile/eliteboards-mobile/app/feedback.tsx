@@ -5,6 +5,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/providers/AuthProvider';
 import { useSubmitFeedback } from '../src/api/hooks';
 
@@ -25,7 +26,7 @@ export default function FeedbackScreen() {
     try {
       await submitFeedback.mutateAsync({ text });
       setText('');
-      Alert.alert('Success', 'Feedback sent! Appreciation incoming. 🚀', [
+      Alert.alert('Success', 'Feedback sent! Appreciation incoming.', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (err: any) {
@@ -41,11 +42,13 @@ export default function FeedbackScreen() {
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.header}>
           <Pressable style={s.backBtn} onPress={() => router.back()}>
-            <Text style={s.backArrow}>←</Text>
+            <Ionicons name="arrow-back" size={20} color="#64748b" />
             <Text style={s.backText}>BACK</Text>
           </Pressable>
           <View style={s.titleRow}>
-            <View style={s.iconWrap}><Text style={s.icon}>⭐</Text></View>
+            <View style={s.iconWrap}>
+              <Ionicons name="star" size={24} color="white" />
+            </View>
             <View>
               <Text style={s.title}>Elite Feedback</Text>
               <Text style={s.subtitle}>SHAPE THE FUTURE OF THIS PLATFORM</Text>

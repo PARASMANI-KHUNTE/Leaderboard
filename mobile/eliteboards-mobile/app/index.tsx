@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, Image as RNImage, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../src/providers/AuthProvider';
 import { useOffline } from '../src/offline/OfflineProvider';
@@ -79,7 +80,7 @@ export default function Home() {
         {/* Top row: icon + status */}
         <View style={styles.cardTop}>
           <View style={styles.trophyIcon}>
-            <Text style={styles.trophyText}>🏆</Text>
+            <Ionicons name="trophy" size={24} color="#facc15" />
           </View>
           <View style={styles.cardTopRight}>
             {canModify && (
@@ -94,7 +95,7 @@ export default function Home() {
                     ]);
                   }}
                 >
-                  <Text style={styles.cardActionDanger}>🗑</Text>
+                  <Ionicons name="trash-outline" size={14} color="#fb7185" />
                 </Pressable>
                 <Pressable
                   style={styles.cardActionBtn}
@@ -103,7 +104,11 @@ export default function Home() {
                     toggleLeaderboardStatus.mutate(lbId);
                   }}
                 >
-                  <Text style={styles.cardActionToggle}>{item.isLive ? '⏸' : '▶'}</Text>
+                  <Ionicons 
+                    name={item.isLive ? "pause" : "play"} 
+                    size={12} 
+                    color={item.isLive ? "#eab308" : "#22c55e"} 
+                  />
                 </Pressable>
               </>
             )}
@@ -121,14 +126,14 @@ export default function Home() {
 
         {/* Entry count */}
         <View style={styles.cardMeta}>
-          <Text style={styles.cardMetaIcon}>👥</Text>
+          <Ionicons name="people-outline" size={12} color="#475569" />
           <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
         </View>
 
         {/* Footer */}
         <View style={styles.cardFooter}>
           <Text style={styles.cardFooterText}>VIEW BOARD</Text>
-          <Text style={styles.cardFooterArrow}>→</Text>
+          <Ionicons name="arrow-forward-outline" size={14} color="#64748b" />
         </View>
       </Pressable>
     );
@@ -173,13 +178,24 @@ export default function Home() {
             </Text>
 
             {/* Banners */}
-            {isBanned && <Text style={styles.banner}>⛔ Account banned — actions disabled</Text>}
-            {!isConnected && <Text style={styles.banner}>📡 Offline — showing cached data</Text>}
+            {isBanned && (
+              <View style={styles.bannerRow}>
+                <Ionicons name="ban-outline" size={14} color="#fb7185" />
+                <Text style={styles.banner}>Account banned — actions disabled</Text>
+              </View>
+            )}
+            {!isConnected && (
+              <View style={styles.bannerRow}>
+                <Ionicons name="wifi-outline" size={14} color="#6366f1" />
+                <Text style={styles.banner}>Offline — showing cached data</Text>
+              </View>
+            )}
 
             {/* Create button */}
             {user && isConnected && !isBanned && (
               <Pressable style={styles.createBtn} onPress={() => setCreateOpen(true)}>
-                <Text style={styles.createBtnText}>＋  Create New Board</Text>
+                <Ionicons name="add" size={18} color="white" style={{ marginRight: 8 }} />
+                <Text style={styles.createBtnText}>Create New Board</Text>
               </Pressable>
             )}
           </View>
@@ -192,7 +208,7 @@ export default function Home() {
             </View>
           ) : (
             <View style={styles.emptyWrap}>
-              <Text style={styles.emptyIcon}>📋</Text>
+              <Ionicons name="list-outline" size={40} color="#475569" />
               <Text style={styles.emptyText}>No leaderboards found. Be the first to create one!</Text>
             </View>
           )
@@ -205,19 +221,25 @@ export default function Home() {
                 <Text style={styles.aboutTitle}>HOW <Text style={{color: '#6366f1'}}>ELITEBOARDS</Text> WORKS</Text>
                 
                 <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>⚡</Text></View>
+                  <View style={styles.aboutIconWrap}>
+                    <Ionicons name="flash" size={20} color="#6366f1" />
+                  </View>
                   <Text style={styles.aboutCardTitle}>1. Create a Board</Text>
                   <Text style={styles.aboutCardDesc}>Instantly generate a real-time leaderboard for your batch, classroom, or competition.</Text>
                 </View>
 
                 <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>👥</Text></View>
+                  <View style={styles.aboutIconWrap}>
+                    <Ionicons name="people" size={20} color="#6366f1" />
+                  </View>
                   <Text style={styles.aboutCardTitle}>2. Share & Compete</Text>
                   <Text style={styles.aboutCardDesc}>Share the unique link. Users can seamlessly submit their scores through web or this app.</Text>
                 </View>
 
                 <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}><Text style={styles.aboutIcon}>📈</Text></View>
+                  <View style={styles.aboutIconWrap}>
+                    <Ionicons name="stats-chart" size={20} color="#6366f1" />
+                  </View>
                   <Text style={styles.aboutCardTitle}>3. Track in Real-time</Text>
                   <Text style={styles.aboutCardDesc}>Watch the rankings update live. Perfect for hackathons, quizzes, and gamified learning.</Text>
                 </View>
@@ -233,10 +255,18 @@ export default function Home() {
                 
                 <Text style={styles.connectTitle}>DEVELOPED BY</Text>
                 <View style={styles.socialRow}>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://github.com/PARASMANI-KHUNTE')}><Text style={styles.socialIcon}>🐙</Text></Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://www.linkedin.com/in/parasmani-khunte-330488228/')}><Text style={styles.socialIcon}>💼</Text></Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('mailto:parasmanikhunte@gmail.com')}><Text style={styles.socialIcon}>✉️</Text></Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://parasmanikhunte.onrender.com/')}><Text style={styles.socialIcon}>🌐</Text></Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://github.com/PARASMANI-KHUNTE')}>
+                    <Ionicons name="logo-github" size={20} color="#94a3b8" />
+                  </Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://www.linkedin.com/in/parasmani-khunte-330488228/')}>
+                    <Ionicons name="logo-linkedin" size={20} color="#94a3b8" />
+                  </Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('mailto:parasmanikhunte@gmail.com')}>
+                    <Ionicons name="mail" size={20} color="#94a3b8" />
+                  </Pressable>
+                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://parasmanikhunte.onrender.com/')}>
+                    <Ionicons name="globe" size={20} color="#94a3b8" />
+                  </Pressable>
                 </View>
                 <Text style={styles.copyright}>© {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</Text>
               </View>
@@ -254,7 +284,7 @@ export default function Home() {
             else setCreateOpen(true);
           }}
         >
-          <Text style={styles.fabText}>＋</Text>
+          <Ionicons name="add" size={32} color="white" />
         </Pressable>
       )}
 
@@ -336,10 +366,12 @@ const styles = StyleSheet.create({
     color: '#64748b', fontSize: 14, fontWeight: '500',
     textAlign: 'center', lineHeight: 20, maxWidth: 320, marginBottom: 16,
   },
-  banner: { color: '#fb7185', fontSize: 12, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  banner: { color: '#fb7185', fontSize: 12, fontWeight: '800' },
   createBtn: {
     backgroundColor: '#4f46e5', paddingHorizontal: 24, paddingVertical: 14,
     borderRadius: 16, marginTop: 4, elevation: 4,
+    flexDirection: 'row', alignItems: 'center',
   },
   createBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
 

@@ -3,7 +3,8 @@ import {
   Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View,
   ActivityIndicator, Image, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../src/providers/AuthProvider';
 import { useOffline } from '../src/offline/OfflineProvider';
@@ -34,8 +35,16 @@ export default function AdminScreen() {
   const { user } = useAuth();
   const { isConnected } = useOffline();
 
-  const [tab, setTab] = useState<TabKey>('reports');
+  const { tab: urlTab } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<TabKey>((urlTab as TabKey) || 'reports');
   const [search, setSearch] = useState('');
+
+  // Sync tab state if the URL parameters change (e.g., from a notification click)
+  useEffect(() => {
+    if (urlTab === 'reports' || urlTab === 'users' || urlTab === 'feedback') {
+      setTab(urlTab);
+    }
+  }, [urlTab]);
 
   const isAdmin = !!user?.isAdmin;
   const isBanned = !!user?.isBanned;
@@ -137,7 +146,8 @@ export default function AdminScreen() {
 
         <View style={s.userStatsRow}>
           <View style={s.userStat}>
-            <Text style={s.userStatVal}>🚩 {item.reportCount || 0}</Text>
+            <Ionicons name="flag" size={14} color="#ef4444" />
+            <Text style={s.userStatVal}>{item.reportCount || 0}</Text>
             <Text style={s.userStatLabel}>REPORTS</Text>
           </View>
           {!item.isAdmin && !isSelf && (
@@ -187,7 +197,7 @@ export default function AdminScreen() {
              disabled={disabled}
              onPress={() => toggleFeedbackRead.mutate(item._id)}
           >
-            <Text style={s.iconBtnText}>{item.isRead ? '💤' : '✅'}</Text>
+            <Ionicons name={item.isRead ? "eye-off-outline" : "checkmark-circle-outline"} size={18} color={item.isRead ? "#475569" : "#22c55e"} />
           </Pressable>
           <Pressable
              style={[s.iconBtn, s.iconBtnDanger, disabled && s.btnDisabled]}
@@ -199,7 +209,7 @@ export default function AdminScreen() {
                ]);
              }}
           >
-            <Text style={s.iconBtnText}>🗑</Text>
+            <Ionicons name="trash-outline" size={18} color="#ef4444" />
           </Pressable>
         </View>
       </View>
@@ -210,14 +220,26 @@ export default function AdminScreen() {
     <View style={s.screen}>
       <View style={s.header}>
         <View style={s.titleRow}>
-          <View style={s.shieldIcon}><Text style={s.shieldEmoji}>🛡️</Text></View>
+          <View style={s.shieldIcon}>
+            <Ionicons name="shield-checkmark" size={24} color="white" />
+          </View>
           <View>
             <Text style={s.titleMain}>ADMIN CONTROL</Text>
             <Text style={s.titleSub}>SYSTEM MANAGEMENT HUB</Text>
           </View>
         </View>
-        {isBanned && <Text style={s.banner}>⛔ Actions disabled: Account Banned</Text>}
-        {!isConnected && <Text style={s.banner}>📡 Actions disabled: Offline</Text>}
+        {isBanned && (
+          <View style={s.bannerRow}>
+            <Ionicons name="ban" size={12} color="#fb7185" />
+            <Text style={s.banner}>Actions disabled: Account Banned</Text>
+          </View>
+        )}
+        {!isConnected && (
+          <View style={s.bannerRow}>
+            <Ionicons name="wifi-outline" size={12} color="#fb7185" />
+            <Text style={s.banner}>Actions disabled: Offline</Text>
+          </View>
+        )}
       </View>
 
       {/* Persistent Tabs */}
@@ -286,7 +308,8 @@ const s = StyleSheet.create({
   shieldEmoji: { fontSize: 24 },
   titleMain: { color: 'white', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
   titleSub: { color: '#64748b', fontSize: 9, fontWeight: '900', letterSpacing: 2.5, marginTop: 2 },
-  banner: { color: '#fb7185', fontSize: 11, fontWeight: '800', marginTop: 10, textAlign: 'center' },
+  bannerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
+  banner: { color: '#fb7185', fontSize: 11, fontWeight: '800' },
 
   tabsRow: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',

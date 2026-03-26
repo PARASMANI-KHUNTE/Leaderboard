@@ -451,7 +451,7 @@ export default function Loading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b1020',
+    backgroundColor: '#020617',
     alignItems: 'center',
     justifyContent: 'center',
   },

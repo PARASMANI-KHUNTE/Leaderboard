@@ -4,15 +4,27 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, LogBox } from 'react-native';
 import AuthProvider, { useAuth } from '../src/providers/AuthProvider';
 import RealtimeProvider from '../src/realtime/RealtimeProvider';
 import OfflineProvider from '../src/offline/OfflineProvider';
 import Loading from './loading'; // Import the custom loading screen
 import * as Updates from 'expo-updates';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io } from 'socket.io-client';
+import Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
+
+LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.API_URL || 'https://leaderboard-backend-3pek.onrender.com';
 
 /* ─── Premium Navbar ─── */
-function Navbar() {
+function Navbar({ unreadCount }: { unreadCount: number }) {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -39,6 +51,24 @@ function Navbar() {
 
         {/* Right side */}
         <View style={styles.navRight}>
+          {user && (
+            <Pressable 
+              style={styles.notifBtn} 
+              onPress={() => router.push('/notifications')}
+            >
+              <Ionicons 
+                name={unreadCount > 0 ? "notifications" : "notifications-outline"} 
+                size={22} 
+                color={unreadCount > 0 ? "#818cf8" : "#94a3b8"} 
+              />
+              {unreadCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+          )}
+
           {user ? (
             <>
               {user.isAdmin && (
@@ -94,7 +124,8 @@ function Navbar() {
                 router.push('/feedback');
               }}
             >
-              <Text style={styles.menuItemText}>💬  Send Feedback</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#94a3b8" />
+              <Text style={styles.menuItemText}>Send Feedback</Text>
             </Pressable>
             <Pressable
               style={styles.menuItem}
@@ -104,7 +135,8 @@ function Navbar() {
                 router.replace('/login');
               }}
             >
-              <Text style={[styles.menuItemText, { color: '#f87171' }]}>🚪  Logout</Text>
+              <Ionicons name="log-out-outline" size={18} color="#f87171" />
+              <Text style={[styles.menuItemText, { color: '#f87171' }]}>Logout</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -114,13 +146,17 @@ function Navbar() {
 }
 
 function AppContent() {
-  const { loading } = useAuth();
+  const { user, loading, unreadCount } = useAuth();
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
 
-  // Instant update checker
+  // Immediate splash hide to reveal custom animation
   React.useEffect(() => {
-    if (__DEV__) return; // Don't check for updates in development
-    
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Instant update checker (already here)
+  React.useEffect(() => {
+    if (__DEV__) return;
     async function onFetchUpdateAsync() {
       try {
         const update = await Updates.checkForUpdateAsync();
@@ -128,9 +164,7 @@ function AppContent() {
           await Updates.fetchUpdateAsync();
           setIsUpdateAvailable(true);
         }
-      } catch (error) {
-        // You can also handle errors here
-      }
+      } catch (error) {}
     }
     onFetchUpdateAsync();
   }, []);
@@ -148,7 +182,7 @@ function AppContent() {
   return (
     <>
       <StatusBar style="light" />
-      <Navbar />
+      <Navbar unreadCount={unreadCount} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#020617' } }} />
 
       {/* Floating Update Notification */}
@@ -222,7 +256,32 @@ const styles = StyleSheet.create({
   navRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  notifBtn: {
+    padding: 6,
+    position: 'relative',
+  },
+  notifIcon: {
+    fontSize: 18,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#4f46e5',
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#020617',
+  },
+  notifBadgeText: {
+    color: 'white',
+    fontSize: 7,
+    fontWeight: '900',
   },
   adminBtn: {
     paddingHorizontal: 10,
@@ -310,8 +369,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 12,
   },
   menuItemText: {
     color: '#cbd5e1',

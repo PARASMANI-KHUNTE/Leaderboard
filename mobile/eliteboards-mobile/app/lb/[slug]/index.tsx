@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { useApi } from '../../../src/api/useApi';
@@ -186,15 +187,19 @@ export default function LeaderboardScreen() {
 
   const handleShare = async () => {
     try {
-      await Share.share({ message: `Check out ${effectiveLeaderboard?.name} on EliteBoards!`, title: 'EliteBoards' });
+      const shareUrl = `https://eliteboards.onrender.com/lb/${slug}`;
+      await Share.share({ 
+        message: `Check out ${effectiveLeaderboard?.name} on EliteBoards! Track real-time rankings here: ${shareUrl}`, 
+        title: 'EliteBoards' 
+      });
     } catch {}
   };
 
   /* ─── Rank icon helper ─── */
   const RankDisplay = ({ rank }: { rank: number | null }) => {
-    if (rank === 1) return <View style={s.crownWrap}><Text style={s.crown}>👑</Text><View style={s.pingDot} /></View>;
-    if (rank === 2) return <Text style={s.medal}>🥈</Text>;
-    if (rank === 3) return <Text style={s.medal}>🥉</Text>;
+    if (rank === 1) return <View style={s.crownWrap}><Ionicons name="trophy" size={28} color="#facc15" /><View style={s.pingDot} /></View>;
+    if (rank === 2) return <Ionicons name="medal" size={24} color="#e5e7eb" />;
+    if (rank === 3) return <Ionicons name="medal" size={24} color="#cd7f32" />;
     return <Text style={s.rankNum}>{rank ? `#${rank}` : '#--'}</Text>;
   };
 
@@ -263,7 +268,7 @@ export default function LeaderboardScreen() {
               style={[s.socialBtn, liked && s.socialBtnActive]}
               onPress={() => user && reactEntry.mutate(entryId)}
             >
-              <Text style={s.socialIcon}>{liked ? '❤️' : '🤍'}</Text>
+              <Ionicons name={liked ? "heart" : "heart-outline"} size={14} color={liked ? "#f43f5e" : "#94a3b8"} />
               <Text style={s.socialCount}>{(item.likedBy ?? []).length}</Text>
             </Pressable>
 
@@ -271,14 +276,14 @@ export default function LeaderboardScreen() {
               style={[s.socialBtn, disliked && s.socialBtnActiveBlue]}
               onPress={() => user && dislikeEntry.mutate(entryId)}
             >
-              <Text style={s.socialIcon}>👎</Text>
+              <Ionicons name="thumbs-down" size={14} color={disliked ? "#6366f1" : "#94a3b8"} />
               <Text style={s.socialCount}>{(item.dislikedBy ?? []).length}</Text>
             </Pressable>
 
             {isOwner ? (
               <>
                 <Pressable style={s.actionBtn} onPress={() => openEditModal(item)}>
-                  <Text style={s.actionBtnText}>✏️</Text>
+                  <Ionicons name="create-outline" size={16} color="#94a3b8" />
                 </Pressable>
                 <Pressable
                   style={[s.actionBtn, s.actionBtnDanger]}
@@ -289,12 +294,12 @@ export default function LeaderboardScreen() {
                     ]);
                   }}
                 >
-                  <Text style={s.actionBtnText}>🗑</Text>
+                  <Ionicons name="trash-outline" size={16} color="#ef4444" />
                 </Pressable>
               </>
             ) : user ? (
               <Pressable style={s.actionBtn} onPress={() => { setReportEntryId(entryId); setReportReason(''); }}>
-                <Text style={s.actionBtnText}>🚩</Text>
+                <Ionicons name="flag-outline" size={16} color="#ef4444" />
               </Pressable>
             ) : null}
           </View>
@@ -319,7 +324,7 @@ export default function LeaderboardScreen() {
             {/* Back + Admin bar */}
             <View style={s.topBar}>
               <Pressable style={s.backBtn} onPress={() => router.back()}>
-                <Text style={s.backArrow}>←</Text>
+                <Ionicons name="arrow-back" size={20} color="#64748b" />
                 <Text style={s.backText}>BACK TO EXPLORE</Text>
               </Pressable>
               <View style={s.topBarRight}>
@@ -329,8 +334,13 @@ export default function LeaderboardScreen() {
                       style={[s.topActionBtn, effectiveLeaderboard?.isLive ? s.topBtnWarn : s.topBtnGreen]}
                       onPress={() => toggleBoardStatus.mutate(String(effectiveLeaderboard?._id))}
                     >
-                      <Text style={s.topActionText}>
-                        {effectiveLeaderboard?.isLive ? '⏸ DOWN' : '▶ LIVE'}
+                      <Ionicons 
+                        name={effectiveLeaderboard?.isLive ? "pause" : "play"} 
+                        size={12} 
+                        color={effectiveLeaderboard?.isLive ? "#eab308" : "#22c55e"} 
+                      />
+                      <Text style={[s.topActionText, { marginLeft: 4 }]}>
+                        {effectiveLeaderboard?.isLive ? 'DOWN' : 'LIVE'}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -342,12 +352,14 @@ export default function LeaderboardScreen() {
                         ]);
                       }}
                     >
-                      <Text style={s.topActionText}>🗑 DELETE</Text>
+                      <Ionicons name="trash" size={12} color="#fca5a5" />
+                      <Text style={[s.topActionText, { marginLeft: 4 }]}>DELETE</Text>
                     </Pressable>
                   </>
                 )}
                 <Pressable style={s.shareBtn} onPress={handleShare}>
-                  <Text style={s.shareBtnText}>📤 SHARE</Text>
+                  <Ionicons name="share-outline" size={12} color="white" />
+                  <Text style={[s.shareBtnText, { marginLeft: 4 }]}>SHARE</Text>
                 </Pressable>
               </View>
             </View>
@@ -368,12 +380,12 @@ export default function LeaderboardScreen() {
             {/* Stats */}
             <View style={s.statsRow}>
               <View style={s.statCard}>
-                <Text style={s.statIcon}>👥</Text>
+                <Ionicons name="people" size={24} color="#6366f1" style={{ marginBottom: 4 }} />
                 <Text style={s.statNum}>{entriesToRender.length}</Text>
                 <Text style={s.statLabel}>STUDENTS</Text>
               </View>
               <View style={s.statCard}>
-                <Text style={s.statIcon}>🏆</Text>
+                <Ionicons name="trophy" size={24} color="#facc15" style={{ marginBottom: 4 }} />
                 <Text style={s.statNum}>{entriesToRender[0]?.cgpa ? Number(entriesToRender[0].cgpa).toFixed(2) : '0.00'}</Text>
                 <Text style={s.statLabel}>TOP SCORE</Text>
               </View>
@@ -400,7 +412,7 @@ export default function LeaderboardScreen() {
 
       {/* Submit FAB */}
       <Pressable style={s.fab} onPress={openSubmitModal}>
-        <Text style={s.fabText}>＋</Text>
+        <Ionicons name="add" size={32} color="white" />
       </Pressable>
 
       {/* Celebration Overlay */}
@@ -419,7 +431,7 @@ export default function LeaderboardScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modal}>
             <View style={s.modalHeader}>
-              <Text style={s.modalHeaderIcon}>⚠️</Text>
+              <Ionicons name="alert-circle" size={32} color="#ef4444" />
               <View>
                 <Text style={s.modalTitle}>Report Entry</Text>
                 <Text style={s.modalSub}>Help us maintain integrity</Text>
@@ -458,7 +470,7 @@ export default function LeaderboardScreen() {
 
               {/* Warning */}
               <View style={s.warningBox}>
-                <Text style={s.warningIcon}>⚠️</Text>
+                <Ionicons name="alert-circle" size={18} color="#eab308" />
                 <Text style={s.warningText}>
                   <Text style={s.warningBold}>ATTENTION: </Text>
                   Please enter valid details. Do not use fake names or CGPA. Persistent fake entries may lead to a ban.
@@ -470,7 +482,12 @@ export default function LeaderboardScreen() {
 
               <Text style={s.fieldLabel}>CGPA (OUT OF 10)</Text>
               <TextInput style={s.input} value={entryCgpa} onChangeText={setEntryCgpa} placeholder="e.g. 9.5" placeholderTextColor="#475569" keyboardType="decimal-pad" />
-              {parseFloat(entryCgpa) === 0 && <Text style={s.promotedHint}>⚡ Promoted Student Mode Activated</Text>}
+              {parseFloat(entryCgpa) === 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
+                  <Ionicons name="flash" size={14} color="#a5b4fc" />
+                  <Text style={s.promotedHint}>Promoted Student Mode Activated</Text>
+                </View>
+              )}
 
               <Text style={s.fieldLabel}>MARKS OBTAINED (MAX 700)</Text>
               <TextInput style={s.inputMarks} value={entryMarks} onChangeText={setEntryMarks} placeholder="Enter total marks" placeholderTextColor="#475569" keyboardType="numeric" />
@@ -505,12 +522,12 @@ const s = StyleSheet.create({
   backArrow: { color: '#64748b', fontSize: 16 },
   backText: { color: '#64748b', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  topActionBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  topActionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   topActionText: { fontSize: 10, fontWeight: '800' },
   topBtnWarn: { borderColor: 'rgba(234,179,8,0.3)', backgroundColor: 'rgba(234,179,8,0.08)', },
   topBtnGreen: { borderColor: 'rgba(34,197,94,0.3)', backgroundColor: 'rgba(34,197,94,0.08)' },
   topBtnDanger: { borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.08)' },
-  shareBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#4f46e5' },
+  shareBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#4f46e5' },
   shareBtnText: { color: 'white', fontSize: 10, fontWeight: '800' },
 
   /* Title */
