@@ -40,7 +40,7 @@ const Navbar = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
-                        <Link to="/releases" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
+                        <Link to="/app" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
                             <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
                             <span className="hidden sm:inline">Download App</span>
                         </Link>

@@ -7,6 +7,7 @@ import LeaderboardView from './pages/LeaderboardView';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import Releases from './pages/Releases';
+import AppPromo from './pages/AppPromo';
 import Navbar from './components/Navbar';
 import NotificationPanel from './components/NotificationPanel';
 import CustomModal from './components/CustomModal';
@@ -152,6 +153,7 @@ function App() {
                   <Route path="/lb/:slug" element={<LeaderboardView />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/releases" element={<Releases />} />
+                  <Route path="/app" element={<AppPromo />} />
                 </Routes>
               </div>
               <FeedbackForm />
