@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import API_URL from '../config';
 import { useAuth, useModal } from '../App';
-import { Trophy, LogOut, ShieldCheck, Bell, User, Trash2 } from 'lucide-react';
+import { Trophy, LogOut, ShieldCheck, Bell, User, Trash2, Smartphone } from 'lucide-react';
 import FeedbackForm from './FeedbackForm';
 import NotificationCenter from './NotificationCenter';
 
@@ -40,10 +40,15 @@ const Navbar = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
+                        <Link to="/releases" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
+                            <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            <span className="hidden sm:inline">Download App</span>
+                        </Link>
+
                         {user ? (
                             <div className="flex items-center gap-4 border-l border-white/10 pl-4">
                                 {user.isAdmin && (
-                                    <Link to="/admin" className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-bold text-xs uppercase tracking-widest transition-colors mr-2">
+                                    <Link to="/admin" className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-bold text-xs uppercase tracking-widest transition-colors mr-2 border-r border-white/10 pr-4">
                                         <ShieldCheck className="w-4 h-4" />
                                         <span className="hidden sm:inline">Admin</span>
                                     </Link>

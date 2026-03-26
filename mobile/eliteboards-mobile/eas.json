@@ -16,6 +16,13 @@
         "EXPO_PUBLIC_API_URL": "https://leaderboard-backend-3pek.onrender.com"
       }
     },
-    "production": {}
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://leaderboard-backend-3pek.onrender.com"
+      }
+    }
   }
 }

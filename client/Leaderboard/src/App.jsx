@@ -6,6 +6,7 @@ import Landing from './pages/Landing';
 import LeaderboardView from './pages/LeaderboardView';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
+import Releases from './pages/Releases';
 import Navbar from './components/Navbar';
 import NotificationPanel from './components/NotificationPanel';
 import CustomModal from './components/CustomModal';
@@ -150,6 +151,7 @@ function App() {
                   <Route path="/" element={<Landing />} />
                   <Route path="/lb/:slug" element={<LeaderboardView />} />
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/releases" element={<Releases />} />
                 </Routes>
               </div>
               <FeedbackForm />
