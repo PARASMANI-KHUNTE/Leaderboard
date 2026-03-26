@@ -38,7 +38,11 @@ export function useLeaderboards() {
   const api = useApi();
   return useQuery({
     queryKey: ['leaderboards'],
-    queryFn: async () => (await api.get('/api/leaderboards')).data as Leaderboard[],
+    queryFn: async () => {
+      const resp = (await api.get('/api/leaderboards')).data;
+      // Handle both old (array) and new (paginated object) response formats
+      return Array.isArray(resp) ? resp : (resp.leaderboards || []);
+    },
   });
 }
 

@@ -121,22 +121,21 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
-                router.push('/feedback');
+                router.push('/profile');
               }}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#94a3b8" />
-              <Text style={styles.menuItemText}>Send Feedback</Text>
+              <Ionicons name="person-outline" size={18} color="#818cf8" />
+              <Text style={styles.menuItemText}>View Profile</Text>
             </Pressable>
             <Pressable
               style={styles.menuItem}
               onPress={() => {
                 setMenuOpen(false);
-                logout();
-                router.replace('/login');
+                router.push('/feedback');
               }}
             >
-              <Ionicons name="log-out-outline" size={18} color="#f87171" />
-              <Text style={[styles.menuItemText, { color: '#f87171' }]}>Logout</Text>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#94a3b8" />
+              <Text style={styles.menuItemText}>Send Feedback</Text>
             </Pressable>
           </View>
         </Pressable>

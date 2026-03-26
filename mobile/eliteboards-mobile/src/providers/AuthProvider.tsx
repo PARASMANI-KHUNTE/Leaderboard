@@ -24,6 +24,10 @@ type User = {
   picture?: string;
   isAdmin: boolean;
   isBanned: boolean;
+  stats?: {
+    heartsEarned: number;
+    totalSubmissions: number;
+  };
 };
 
 type AuthContextValue = {
@@ -86,6 +90,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       picture: res.data.picture,
       isAdmin: res.data.isAdmin,
       isBanned: res.data.isBanned,
+      stats: res.data.stats,
     });
   }, []);
 

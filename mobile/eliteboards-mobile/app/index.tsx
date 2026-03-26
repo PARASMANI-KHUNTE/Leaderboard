@@ -67,7 +67,7 @@ export default function Home() {
     }
   };
 
-  const renderItem = ({ item, index }: { item: any; index: number }) => {
+  const renderItem = ({ item }: { item: any }) => {
     const lbId = String(item._id);
     const isCreator = user ? String(item.createdBy) === String(user.id) : false;
     const canModify = canAct && (user?.isAdmin || isCreator);
@@ -77,7 +77,6 @@ export default function Home() {
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
         onPress={() => router.push(`/lb/${item.slug}`)}
       >
-        {/* Top row: icon + status */}
         <View style={styles.cardTop}>
           <View style={styles.trophyIcon}>
             <Ionicons name="trophy" size={24} color="#facc15" />
@@ -121,16 +120,13 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Board name */}
         <Text style={styles.cardName}>{item.name}</Text>
 
-        {/* Entry count */}
         <View style={styles.cardMeta}>
           <Ionicons name="people-outline" size={12} color="#475569" />
           <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
         </View>
 
-        {/* Footer */}
         <View style={styles.cardFooter}>
           <Text style={styles.cardFooterText}>VIEW BOARD</Text>
           <Ionicons name="arrow-forward-outline" size={14} color="#64748b" />
@@ -151,33 +147,39 @@ export default function Home() {
   return (
     <View style={styles.screen}>
       <FlatList
-        data={displayedBoards}
+        data={Array.isArray(displayedBoards) ? displayedBoards.slice(0, 3) : []}
         keyExtractor={(it) => String(it._id)}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 100, paddingTop: 4 }}
         ListHeaderComponent={
           <View style={styles.hero}>
-            {/* Realtime badge */}
             <View style={styles.realtimeBadge}>
               <View style={styles.realtimeDot} />
               <Text style={styles.realtimeText}>REAL-TIME SYSTEMS ACTIVE</Text>
             </View>
 
-            {/* Logo and Title */}
             <RNImage 
               source={require('../assets/logo.png')} 
               style={styles.heroLogo} 
               resizeMode="contain"
             />
-            <View style={styles.titleRow}>
-              <Text style={styles.titleElite}>Elite</Text>
-              <Text style={styles.titleBoards}>Boards</Text>
+            
+            <View style={styles.heroTextContainer}>
+              <Text style={styles.heroTitleMain}>Real-Time Leaderboards for Competitive Minds</Text>
+              <Text style={styles.heroSub}>
+                Track performance, manage rankings, and stay ahead — all in one powerful system designed for the next generation of students.
+              </Text>
             </View>
-            <Text style={styles.heroSub}>
-              The ultimate student ranking platform. Create, share, and track performance in real-time.
-            </Text>
 
-            {/* Banners */}
+            <View style={styles.trustBadge}>
+              <View style={styles.avatarStack}>
+                <RNImage source={{ uri: 'https://i.pravatar.cc/100?u=1' }} style={styles.stackAvatar} />
+                <RNImage source={{ uri: 'https://i.pravatar.cc/100?u=2' }} style={[styles.stackAvatar, { marginLeft: -12 }]} />
+                <RNImage source={{ uri: 'https://i.pravatar.cc/100?u=3' }} style={[styles.stackAvatar, { marginLeft: -12 }]} />
+              </View>
+              <Text style={styles.trustText}>TRUSTED BY <Text style={{color: '#818cf8'}}>500+ STUDENTS</Text></Text>
+            </View>
+
             {isBanned && (
               <View style={styles.bannerRow}>
                 <Ionicons name="ban-outline" size={14} color="#fb7185" />
@@ -191,13 +193,6 @@ export default function Home() {
               </View>
             )}
 
-            {/* Create button */}
-            {user && isConnected && !isBanned && (
-              <Pressable style={styles.createBtn} onPress={() => setCreateOpen(true)}>
-                <Ionicons name="add" size={18} color="white" style={{ marginRight: 8 }} />
-                <Text style={styles.createBtnText}>Create New Board</Text>
-              </Pressable>
-            )}
           </View>
         }
         ListEmptyComponent={
@@ -215,67 +210,80 @@ export default function Home() {
         }
         ListFooterComponent={
           !isLoading ? (
-            <View style={styles.footerSection}>
-              {/* About Section */}
-              <View style={styles.aboutContainer}>
-                <Text style={styles.aboutTitle}>HOW <Text style={{color: '#6366f1'}}>ELITEBOARDS</Text> WORKS</Text>
-                
-                <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}>
-                    <Ionicons name="flash" size={20} color="#6366f1" />
+            <View>
+              {displayedBoards.length > 0 && (
+                <Pressable 
+                  style={[styles.viewMoreBtn, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)' }]}
+                  onPress={() => router.push('/boards')}
+                >
+                  <Text style={[styles.viewMoreText, { color: '#a5b4fc' }]}>EXPLORE ALL LEADERBOARDS</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#818cf8" />
+                </Pressable>
+              )}
+              
+              <View style={styles.footerSection}>
+                <View style={styles.aboutContainer}>
+                  <Text style={styles.sectionHeading}>WHY <Text style={{color: '#6366f1'}}>ELITEBOARDS</Text>?</Text>
+                  
+                  <View style={styles.featureGrid}>
+                    <View style={styles.featureCard}>
+                      <View style={styles.featureIconWrap}>
+                        <Ionicons name="flash" size={20} color="#6366f1" />
+                      </View>
+                      <Text style={styles.featureTitle}>LITERAL REAL-TIME</Text>
+                      <Text style={styles.featureDesc}>Zero-latency updates using socket technology. See your rank change the second a score is submitted.</Text>
+                    </View>
+
+                    <View style={styles.featureCard}>
+                      <View style={styles.featureIconWrap}>
+                        <Ionicons name="shield-checkmark" size={20} color="#6366f1" />
+                      </View>
+                      <Text style={styles.featureTitle}>SMART RANKING</Text>
+                      <Text style={styles.featureDesc}>Intelligent tie-handling and automated validation ensure the most accurate rankings possible.</Text>
+                    </View>
+
+                    <View style={styles.featureCard}>
+                      <View style={styles.featureIconWrap}>
+                        <Ionicons name="infinite" size={20} color="#6366f1" />
+                      </View>
+                      <Text style={styles.featureTitle}>INFINITE SCALING</Text>
+                      <Text style={styles.featureDesc}>From small class projects to university-wide hackathons, our architecture handles it all.</Text>
+                    </View>
                   </View>
-                  <Text style={styles.aboutCardTitle}>1. Create a Board</Text>
-                  <Text style={styles.aboutCardDesc}>Instantly generate a real-time leaderboard for your batch, classroom, or competition.</Text>
                 </View>
 
-                <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}>
-                    <Ionicons name="people" size={20} color="#6366f1" />
+                <View style={styles.techSection}>
+                  <Text style={styles.techHeading}>TECHNOLOGICAL FOUNDATION</Text>
+                  <View style={styles.techGrid}>
+                    <View style={styles.techItem}><Text style={styles.techLabel}>REACT NATIVE</Text></View>
+                    <View style={styles.techItem}><Text style={styles.techLabel}>NODE.JS</Text></View>
+                    <View style={styles.techItem}><Text style={styles.techLabel}>MONGODB</Text></View>
+                    <View style={styles.techItem}><Text style={styles.techLabel}>SOCKET.IO</Text></View>
                   </View>
-                  <Text style={styles.aboutCardTitle}>2. Share & Compete</Text>
-                  <Text style={styles.aboutCardDesc}>Share the unique link. Users can seamlessly submit their scores through web or this app.</Text>
                 </View>
 
-                <View style={styles.aboutCard}>
-                  <View style={styles.aboutIconWrap}>
-                    <Ionicons name="stats-chart" size={20} color="#6366f1" />
+                <View style={styles.devFooter}>
+                  <View style={styles.devHeader}>
+                    <Text style={styles.devElite}>Elite</Text>
+                    <Text style={styles.devBoards}>Boards</Text>
                   </View>
-                  <Text style={styles.aboutCardTitle}>3. Track in Real-time</Text>
-                  <Text style={styles.aboutCardDesc}>Watch the rankings update live. Perfect for hackathons, quizzes, and gamified learning.</Text>
+                  <Text style={styles.devSub}>Empowering student communities with real-time competitive ranking systems.</Text>
+                  
+                  <Text style={styles.connectTitle}>DEVELOPED BY</Text>
+                  <View style={styles.socialRow}>
+                    <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://github.com/PARASMANI-KHUNTE')}><Ionicons name="logo-github" size={20} color="#94a3b8" /></Pressable>
+                    <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://www.linkedin.com/in/parasmani-khunte-330488228/')}><Ionicons name="logo-linkedin" size={20} color="#94a3b8" /></Pressable>
+                    <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('mailto:parasmanikhunte@gmail.com')}><Ionicons name="mail" size={20} color="#94a3b8" /></Pressable>
+                    <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://parasmanikhunte.onrender.com/')}><Ionicons name="globe" size={20} color="#94a3b8" /></Pressable>
+                  </View>
+                  <Text style={styles.copyright}>© {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</Text>
                 </View>
-              </View>
-
-              {/* Dev Footer */}
-              <View style={styles.devFooter}>
-                <View style={styles.devHeader}>
-                  <Text style={styles.devElite}>Elite</Text>
-                  <Text style={styles.devBoards}>Boards</Text>
-                </View>
-                <Text style={styles.devSub}>Empowering student communities with real-time competitive ranking systems.</Text>
-                
-                <Text style={styles.connectTitle}>DEVELOPED BY</Text>
-                <View style={styles.socialRow}>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://github.com/PARASMANI-KHUNTE')}>
-                    <Ionicons name="logo-github" size={20} color="#94a3b8" />
-                  </Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://www.linkedin.com/in/parasmani-khunte-330488228/')}>
-                    <Ionicons name="logo-linkedin" size={20} color="#94a3b8" />
-                  </Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('mailto:parasmanikhunte@gmail.com')}>
-                    <Ionicons name="mail" size={20} color="#94a3b8" />
-                  </Pressable>
-                  <Pressable style={styles.socialBtn} onPress={() => Linking.openURL('https://parasmanikhunte.onrender.com/')}>
-                    <Ionicons name="globe" size={20} color="#94a3b8" />
-                  </Pressable>
-                </View>
-                <Text style={styles.copyright}>© {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</Text>
               </View>
             </View>
           ) : null
         }
       />
 
-      {/* FAB */}
       {canCreate && (
         <Pressable
           style={styles.fab}
@@ -288,7 +296,6 @@ export default function Home() {
         </Pressable>
       )}
 
-      {/* Create modal */}
       {createOpen && (
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
@@ -334,52 +341,54 @@ const styles = StyleSheet.create({
   errorTitle: { color: '#a5b4fc', fontSize: 28, fontWeight: '900' },
   errorSub: { color: '#94a3b8', fontSize: 14, marginTop: 8, textAlign: 'center' },
 
-  /* Hero */
   hero: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 16, alignItems: 'center' },
-  heroLogo: {
-    width: 100,
-    height: 100,
-    marginBottom: 12,
-  },
+  heroLogo: { width: 100, height: 100, marginBottom: 12 },
   realtimeBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: 20,
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
-    borderWidth: 1, borderColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)', borderWidth: 1, borderColor: 'rgba(34, 197, 94, 0.15)',
     marginBottom: 14,
   },
-  realtimeDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: '#22c55e',
-  },
+  realtimeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' },
   realtimeText: { color: '#22c55e', fontSize: 9, fontWeight: '900', letterSpacing: 2.5 },
-  titleRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 },
-  titleElite: {
-    color: '#c7d2fe', fontSize: 38, fontWeight: '900',
-    fontStyle: 'italic', letterSpacing: -1,
-  },
-  titleBoards: {
-    color: '#6366f1', fontSize: 38, fontWeight: '900', letterSpacing: -1,
+  heroTextContainer: { alignItems: 'center', marginBottom: 20 },
+  heroTitleMain: {
+    color: 'white', fontSize: 32, fontWeight: '900', textAlign: 'center',
+    lineHeight: 38, letterSpacing: -1, paddingHorizontal: 10,
   },
   heroSub: {
-    color: '#64748b', fontSize: 14, fontWeight: '500',
-    textAlign: 'center', lineHeight: 20, maxWidth: 320, marginBottom: 16,
+    color: '#64748b', fontSize: 13, fontWeight: '600',
+    textAlign: 'center', lineHeight: 20, maxWidth: 300, marginTop: 12,
   },
+  trustBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)', paddingHorizontal: 16,
+    paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 24,
+  },
+  avatarStack: { flexDirection: 'row', alignItems: 'center' },
+  stackAvatar: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#020617' },
+  trustText: { color: '#475569', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+
   bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   banner: { color: '#fb7185', fontSize: 12, fontWeight: '800' },
   createBtn: {
     backgroundColor: '#4f46e5', paddingHorizontal: 24, paddingVertical: 14,
-    borderRadius: 16, marginTop: 4, elevation: 4,
-    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, marginTop: 4, elevation: 4, flexDirection: 'row', alignItems: 'center',
   },
   createBtnText: { color: 'white', fontWeight: '900', fontSize: 14 },
 
-  /* Cards */
+  viewMoreBtn: {
+    marginHorizontal: 16, marginTop: 8, marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  viewMoreText: { color: '#818cf8', fontWeight: '900', fontSize: 10, letterSpacing: 2 },
+
   card: {
     marginHorizontal: 16, marginVertical: 6, padding: 16,
-    borderRadius: 16, backgroundColor: '#111a33',
-    borderWidth: 1, borderColor: '#1f2a4d',
+    borderRadius: 16, backgroundColor: '#111a33', borderWidth: 1, borderColor: '#1f2a4d',
   },
   cardPressed: { borderColor: 'rgba(99, 102, 241, 0.4)' },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -387,14 +396,11 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 12,
     backgroundColor: 'rgba(79, 70, 229, 0.1)', alignItems: 'center', justifyContent: 'center',
   },
-  trophyText: { fontSize: 20 },
   cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardActionBtn: {
     width: 28, height: 28, borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center',
   },
-  cardActionDanger: { fontSize: 13 },
-  cardActionToggle: { fontSize: 12 },
   statusBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
@@ -407,40 +413,27 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 8, fontWeight: '900', letterSpacing: 2 },
   statusTextLive: { color: '#4ade80' },
   statusTextDown: { color: '#f87171' },
-  cardName: {
-    color: '#e5e7eb', fontSize: 20, fontWeight: '900',
-    letterSpacing: -0.3, marginBottom: 8,
-  },
+  cardName: { color: '#e5e7eb', fontSize: 20, fontWeight: '900', letterSpacing: -0.3, marginBottom: 8 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  cardMetaIcon: { fontSize: 12 },
   cardMetaText: { color: '#475569', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 12,
   },
   cardFooterText: { color: '#64748b', fontSize: 10, fontWeight: '800', letterSpacing: 2 },
-  cardFooterArrow: { color: '#64748b', fontSize: 14 },
 
-  /* Empty / Loading */
   emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 12 },
   loadingText: { color: '#64748b', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  emptyIcon: { fontSize: 40 },
   emptyText: { color: '#475569', fontSize: 13, fontWeight: '600', textAlign: 'center', fontStyle: 'italic' },
 
-  /* FAB */
   fab: {
     position: 'absolute', right: 18, bottom: 18,
     width: 56, height: 56, borderRadius: 18,
-    backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center',
-    elevation: 8,
+    backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', elevation: 8,
   },
-  fabText: { color: 'white', fontSize: 24, fontWeight: '900' },
-
-  /* Modal */
   modalOverlay: {
     position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20,
   },
   modal: {
     width: '100%', backgroundColor: '#0f172a', borderRadius: 20,
@@ -460,112 +453,37 @@ const styles = StyleSheet.create({
   modalBtnSecText: { color: '#94a3b8', fontWeight: '800' },
   modalBtnPriText: { color: 'white', fontWeight: '800', textAlign: 'center' },
 
-  /* Footer Section */
-  footerSection: {
-    marginTop: 40,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-    paddingTop: 30,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+  footerSection: { marginTop: 40, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 30, paddingHorizontal: 20, paddingBottom: 40 },
+  aboutContainer: { marginBottom: 40 },
+  sectionHeading: { color: 'white', fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 24, letterSpacing: -0.5 },
+  featureGrid: { gap: 12 },
+  featureCard: {
+    backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 20, padding: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)',
   },
-  aboutContainer: {
-    marginBottom: 40,
+  featureIconWrap: {
+    width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  aboutTitle: {
-    color: '#e5e7eb',
-    fontSize: 22,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: -0.5,
+  featureTitle: { color: 'white', fontSize: 14, fontWeight: '900', letterSpacing: 1, marginBottom: 4 },
+  featureDesc: { color: '#64748b', fontSize: 12, lineHeight: 18, fontWeight: '500' },
+
+  techSection: { marginTop: 40, alignItems: 'center', paddingBottom: 40 },
+  techHeading: { color: '#334155', fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 20 },
+  techGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  techItem: { 
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, 
+    backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)'
   },
-  aboutCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  aboutIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  aboutIcon: {
-    fontSize: 20,
-  },
-  aboutCardTitle: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  aboutCardDesc: {
-    color: '#94a3b8',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  devFooter: {
-    paddingTop: 30,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-  },
-  devHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 8,
-  },
-  devElite: {
-    color: '#c7d2fe',
-    fontSize: 24,
-    fontWeight: '900',
-    fontStyle: 'italic',
-  },
-  devBoards: {
-    color: '#6366f1',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  devSub: {
-    color: '#64748b',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  connectTitle: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
-  },
-  socialBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialIcon: {
-    fontSize: 20,
-  },
-  copyright: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: '600',
-  },
+  techLabel: { color: '#64748b', fontSize: 9, fontWeight: '900' },
+
+  devFooter: { paddingTop: 30, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  devHeader: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 8 },
+  devElite: { color: '#c7d2fe', fontSize: 24, fontWeight: '900', fontStyle: 'italic' },
+  devBoards: { color: '#6366f1', fontSize: 24, fontWeight: '900' },
+  devSub: { color: '#64748b', fontSize: 12, textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 },
+  connectTitle: { color: '#475569', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 12 },
+  socialRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
+  socialBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+  copyright: { color: '#475569', fontSize: 10, fontWeight: '600' },
 });
