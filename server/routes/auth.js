@@ -18,8 +18,6 @@ router.get('/google',
             process.env.GOOGLE_CALLBACK_URL ||
             `${safeProto}://${host}/auth/google/callback`;
         
-        console.log('[OAuth] Init - proto:', proto, 'host:', host, 'safeProto:', safeProto, 'callbackURL:', callbackURL, 'GOOGLE_CALLBACK_URL env:', process.env.GOOGLE_CALLBACK_URL);
-        
         // Encode platform + mobile redirect URL into the state param.
         // Google passes state back to the callback unchanged — reliable unlike sessions.
         const statePayload = { platform, redirectUrl: req.query.redirect || null };
@@ -33,7 +31,22 @@ router.get('/google',
     });
 
 router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res, next) => {
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        const proto = forwardedProto
+            ? String(forwardedProto).split(',')[0].trim()
+            : req.protocol;
+        const host = req.get('host');
+        const safeProto =
+            proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
+
+        const callbackURL = process.env.GOOGLE_CALLBACK_URL || `${safeProto}://${host}/auth/google/callback`;
+
+        passport.authenticate('google', { 
+            failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
+            callbackURL 
+        })(req, res, next);
+    },
     async (req, res) => {
         try {
             // Decode state payload (base64url JSON: { platform, redirectUrl })
