@@ -13,10 +13,11 @@ const Navbar = () => {
     const navigate = useNavigate();
     const [imgError, setImgError] = useState(false);
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
+    // Logout logic removed from here as it's now in the Profile page
+    // Only keeping it if we really need it in Navbar, but the user requested a separate section.
+    // I'll keep the function define just in case the user wants a quick logout still?
+    // User said "handel... joined leaderboard, account delete and logout" in a separate section.
+    // So I will MOVE them to Profile and simplify Navbar.
 
     return (
         <nav className="border-b border-white/10 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
@@ -40,6 +41,11 @@ const Navbar = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
+                        <Link to="/boards" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
+                            <Trophy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            <span className="hidden sm:inline">Leaderboards</span>
+                        </Link>
+
                         <Link to="/app" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
                             <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
                             <span className="hidden sm:inline">Download App</span>
@@ -70,34 +76,13 @@ const Navbar = () => {
                                     )}
                                     <div className="hidden sm:block">
                                         <p className="text-xs font-black text-white uppercase tracking-tight leading-none mb-0.5">{user.name}</p>
-                                        <button onClick={handleLogout} className="flex items-center gap-1 text-[10px] font-bold text-red-500/70 hover:text-red-500 uppercase tracking-widest transition-colors mb-2">
-                                            <LogOut className="w-3 h-3" />
-                                            Logout
-                                        </button>
-                                        <div className="pt-2 border-t border-white/5">
-                                            <button
-                                                onClick={async () => {
-                                                    const ok = await showConfirm('Delete Account', 'WARNING: This will permanently delete your account and all your leaderboard activity. This cannot be undone.');
-                                                    if (!ok) return;
-                                                    const ok2 = await showConfirm('Final Confirmation', 'Are you absolutely sure? Everything (likes, submissions, reports) will be purged.');
-                                                    if (!ok2) return;
-
-                                                    try {
-                                                        await axios.delete(`${API_URL}/auth/delete-account`, {
-                                                            headers: { Authorization: `Bearer ${user.token}` }
-                                                        });
-                                                        logout();
-                                                        navigate('/login');
-                                                    } catch (err) {
-                                                        showAlert('Error', 'Failed to delete account');
-                                                    }
-                                                }}
-                                                className="flex items-center gap-1 text-[9px] font-bold text-slate-600 hover:text-red-500/80 uppercase tracking-[0.15em] transition-all opacity-60 hover:opacity-100"
-                                            >
-                                                <Trash2 className="w-2.5 h-2.5" />
-                                                Danger: Delete Account
-                                            </button>
-                                        </div>
+                                        <Link 
+                                            to="/profile" 
+                                            className="flex items-center gap-1 text-[10px] font-bold text-indigo-400/80 hover:text-indigo-400 uppercase tracking-widest transition-colors"
+                                        >
+                                            <User className="w-3 h-3" />
+                                            View Profile
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

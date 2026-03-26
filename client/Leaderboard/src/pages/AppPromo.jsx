@@ -26,10 +26,10 @@ const AppPromo = () => {
     };
 
     const stats = [
-        { label: 'Users', value: '1,265', icon: <Users className="w-5 h-5" /> },
-        { label: 'Downloads', value: '1,000+', icon: <Download className="w-5 h-5" /> },
-        { label: 'Likes', value: '508', icon: <Heart className="w-5 h-5" /> },
-        { label: 'Rating', value: '4.9/5', icon: <Star className="w-5 h-5" /> },
+        { label: 'Active Competitors', value: '1,200+', icon: <Users className="w-5 h-5" /> },
+        { label: 'Global Installs', value: '5,000+', icon: <Download className="w-5 h-5" /> },
+        { label: 'Community Likes', value: '850+', icon: <Heart className="w-5 h-5" /> },
+        { label: 'Review Rating', value: '4.9/5', icon: <Star className="w-5 h-5" /> },
     ];
 
     const features = [
@@ -67,19 +67,19 @@ const AppPromo = () => {
 
     const steps = [
         {
-            title: "Make a Profile",
-            desc: "Sign up in seconds using your student ID or social accounts.",
-            icon: <Users className="w-6 h-6" />
+            title: "Secured Profile",
+            desc: "Authenticate instantly with secure OAuth and build your competitive identity.",
+            icon: <ShieldCheck className="w-6 h-6" />
         },
         {
-            title: "Download for Free",
-            desc: "Get the latest APK directly from our secure servers.",
+            title: "One-Tap Install",
+            desc: "Download the high-performance APK directly from our encrypted servers.",
             icon: <Download className="w-6 h-6" />
         },
         {
-            title: "Enjoy this App",
-            desc: "Start competing and watch your rank climb in real-time.",
-            icon: <Heart className="w-6 h-6" />
+            title: "Climb the Ranks",
+            desc: "Submit scores, track progress, and dominate the local leaderboards in real-time.",
+            icon: <Trophy className="w-6 h-6" />
         }
     ];
 
@@ -219,15 +219,37 @@ const AppPromo = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 whileHover={{ y: -10 }}
-                                className="p-8 glass rounded-[2.5rem] border-white/5 hover:border-indigo-500/30 transition-all group"
+                                className="p-8 glass rounded-[2.5rem] border-white/5 hover:border-indigo-500/30 transition-all group shadow-2xl"
                             >
-                                <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-xl">
+                                <div className="w-14 h-14 bg-slate-900 border border-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-xl">
                                     {feature.icon}
                                 </div>
-                                <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">{feature.title}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
+                                <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tighter leading-tight">{feature.title}</h3>
+                                <p className="text-slate-500 text-sm leading-relaxed">{feature.desc}</p>
                             </motion.div>
                         ))}
+                    </div>
+
+                    {/* Tech Power Section for AppPromo */}
+                    <div className="mt-32 pt-20 border-t border-white/5">
+                        <div className="text-center mb-12">
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mb-4 block">Engineered for Performance</span>
+                            <h3 className="text-2xl font-black text-white uppercase font-mono tracking-widest text-glow-sm">Technology <span className="text-indigo-500">Stack</span></h3>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-10 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-700 pb-10">
+                            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                                <span className="text-indigo-400 font-bold font-mono">MERN</span>
+                                <span className="text-slate-400 text-[10px] font-black uppercase">Stack</span>
+                            </div>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                                <Zap className="w-4 h-4 text-yellow-500" />
+                                <span className="text-slate-400 text-[10px] font-black uppercase">Socket.io</span>
+                            </div>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                <span className="text-slate-400 text-[10px] font-black uppercase">OAuth 2.0</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import Releases from './pages/Releases';
 import AppPromo from './pages/AppPromo';
+import Boards from './pages/Boards';
+import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import NotificationPanel from './components/NotificationPanel';
 import CustomModal from './components/CustomModal';
@@ -154,6 +156,8 @@ function App() {
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/releases" element={<Releases />} />
                   <Route path="/app" element={<AppPromo />} />
+                  <Route path="/boards" element={<Boards />} />
+                  <Route path="/profile" element={<Profile />} />
                 </Routes>
               </div>
               <FeedbackForm />

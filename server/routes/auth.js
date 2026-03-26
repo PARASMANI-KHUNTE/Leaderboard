@@ -159,18 +159,60 @@ router.get('/debug', (req, res) => {
 
 const { auth } = require('../middleware/auth');
 
-router.get('/profile', auth, (req, res) => {
-    res.json({
-        id: req.user._id,
-        name: req.user.displayName,
-        email: req.user.email,
-        picture: req.user.profilePicture,
-        isAdmin: req.user.isAdmin,
-        isBanned: req.user.isBanned
-    });
+router.get('/profile', auth, async (req, res) => {
+    try {
+        const LeaderboardEntry = require('../models/Leaderboard');
+        // Calculate total hearts earned across all entries
+        const entries = await LeaderboardEntry.find({ userId: req.user._id });
+        const heartsEarned = entries.reduce((acc, entry) => acc + (entry.likedBy ? entry.likedBy.length : 0), 0);
+        const totalSubmissions = entries.length;
+
+        res.json({
+            id: req.user._id,
+            name: req.user.displayName,
+            email: req.user.email,
+            picture: req.user.profilePicture,
+            isAdmin: req.user.isAdmin,
+            isBanned: req.user.isBanned,
+            stats: {
+                heartsEarned,
+                totalSubmissions
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // Delete account (cascading cleanup)
+// Joined leaderboards (distinct boards the user has submissions in)
+router.get('/joined-leaderboards', auth, async (req, res) => {
+    try {
+        const LeaderboardEntry = require('../models/Leaderboard');
+        // We find all entries by user and populate the associated leaderboard collection data.
+        const entries = await LeaderboardEntry.find({ userId: req.user._id })
+            .populate('leaderboardId', 'name slug isLive');
+        
+        // Use a map to ensure we only return unique leaderboards the user has joined.
+        const joinedMap = new Map();
+        for (const entry of entries) {
+            if (entry.leaderboardId && !joinedMap.has(entry.leaderboardId._id.toString())) {
+                joinedMap.set(entry.leaderboardId._id.toString(), {
+                    id: entry.leaderboardId._id,
+                    name: entry.leaderboardId.name,
+                    slug: entry.leaderboardId.slug,
+                    isLive: entry.leaderboardId.isLive,
+                    entryId: entry._id
+                });
+            }
+        }
+        
+        res.json(Array.from(joinedMap.values()));
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 router.delete('/delete-account', auth, async (req, res) => {
     const userId = req.user._id;
 

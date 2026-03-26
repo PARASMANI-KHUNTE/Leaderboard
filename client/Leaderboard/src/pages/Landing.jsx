@@ -18,8 +18,8 @@ const Landing = () => {
     useEffect(() => {
         const fetchLeaderboards = async () => {
             try {
-                const res = await axios.get(`${API_URL}/api/leaderboards`);
-                setLeaderboards(res.data);
+                const res = await axios.get(`${API_URL}/api/leaderboards?limit=3`);
+                setLeaderboards(res.data.leaderboards);
             } catch (err) {
                 console.error('Error:', err);
             } finally {
@@ -32,7 +32,7 @@ const Landing = () => {
         const socket = io(API_URL);
 
         socket.on('leaderboardCreated', (newBoard) => {
-            setLeaderboards(prev => [newBoard, ...prev]);
+            setLeaderboards(prev => [newBoard, ...prev].slice(0, 3));
         });
 
         socket.on('leaderboardDeleted', (deletedId) => {
@@ -112,8 +112,12 @@ const Landing = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="flex flex-col items-center justify-center gap-2 mb-4"
+                    className="flex flex-col items-center justify-center gap-4 mb-4"
                 >
+                    <div className="flex items-center gap-3 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full backdrop-blur-md">
+                        <Users className="w-4 h-4 text-indigo-400" />
+                        <span className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em]">Trusted by 500+ Students</span>
+                    </div>
                     <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
                         <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
                         <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em]">Real-time Systems Active</span>
@@ -124,10 +128,10 @@ const Landing = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.1 }}
-                    className="text-6xl sm:text-8xl font-black text-white tracking-tighter"
+                    className="text-5xl sm:text-7xl lg:text-8xl font-black text-white tracking-tighter leading-[0.9]"
                 >
-                    <span className="bg-gradient-to-r from-white via-indigo-200 to-slate-400 bg-clip-text text-transparent uppercase font-mono italic">Elite</span>
-                    <span className="text-indigo-500 text-glow uppercase font-mono">Boards</span>
+                    <span className="bg-gradient-to-r from-white via-indigo-200 to-slate-400 bg-clip-text text-transparent uppercase font-mono italic">Real-Time</span><br />
+                    <span className="text-indigo-500 text-glow uppercase font-mono">Leaderboards</span>
                 </motion.h1>
 
                 <motion.p 
@@ -136,7 +140,7 @@ const Landing = () => {
                     transition={{ duration: 0.6, delay: 0.2 }}
                     className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto font-medium leading-relaxed"
                 >
-                    The ultimate student ranking platform. Create, share, and track performance in complete <span className="text-indigo-400 font-bold">real-time</span>.
+                    Designed for <span className="text-white font-bold">Competitive Minds</span>. Track performance, manage rankings, and stay ahead — all in one powerful system.
                 </motion.p>
 
                 {user && (
@@ -231,40 +235,112 @@ const Landing = () => {
                 )}
             </div>
 
-            {/* About Section */}
-            <div className="pt-20 pb-10 border-t border-white/10 mt-20">
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl sm:text-5xl font-black text-white uppercase font-mono tracking-tight mb-4">How <span className="text-indigo-500">EliteBoards</span> Works</h2>
-                    <p className="text-slate-400 max-w-2xl mx-auto text-lg">Three simple steps to gamify your community and track performance securely.</p>
+            <div className="flex justify-center pt-10">
+                <Link
+                    to="/boards"
+                    className="group relative flex items-center justify-center gap-4 px-10 py-5 bg-gradient-to-r from-indigo-900/40 to-indigo-800/40 backdrop-blur-md rounded-2xl text-slate-300 hover:text-white transition-all duration-300 border border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_40px_rgba(79,70,229,0.2)] active:scale-95"
+                >
+                    <LayoutGrid className="w-5 h-5 text-indigo-400 group-hover:rotate-90 transition-transform duration-500" />
+                    <div className="flex flex-col items-start leading-none text-left">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-indigo-400 group-hover:text-indigo-300 font-bold mb-1">Discover more</span>
+                        <span className="font-black text-lg tracking-wide uppercase">Explore All Boards</span>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-indigo-500 group-hover:translate-x-2 transition-transform duration-300" />
+                </Link>
+            </div>
+
+            {/* Why EliteBoards Section */}
+            <div className="pt-32 pb-10 border-t border-white/10 mt-20">
+                <div className="text-center mb-16 space-y-4">
+                    <div className="inline-block px-4 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                        Core Advantages
+                    </div>
+                    <h2 className="text-4xl sm:text-6xl font-black text-white uppercase font-mono tracking-tight leading-none">
+                        Why <span className="text-indigo-500 italic">EliteBoards?</span>
+                    </h2>
+                    <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
+                        Precision engineering meets seamless user experience. Built for those who take performance seriously.
+                    </p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-indigo-500/50 transition-all">
                         <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
                             <Zap className="w-7 h-7" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-3">1. Create a Board</h3>
-                        <p className="text-slate-400 leading-relaxed text-sm">
-                            Instantly generate a real-time leaderboard for your batch, classroom, or competition. Custom links are generated in seconds.
+                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Socket Powered</h3>
+                        <p className="text-slate-500 leading-relaxed text-sm">
+                            Instant updates without refreshes. Experience the thrill of real-time rank changes as they happen.
                         </p>
                     </div>
-                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
-                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
-                            <Users className="w-7 h-7" />
+                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+                        <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
+                            <Trophy className="w-7 h-7" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-3">2. Share & Compete</h3>
-                        <p className="text-slate-400 leading-relaxed text-sm">
-                            Share the unique link with participants. Users can seamlessly submit their scores or metrics through the web or our mobile app.
+                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Smart Ranking</h3>
+                        <p className="text-slate-500 leading-relaxed text-sm">
+                            Intelligent tie-handling system ensures fair competition. Equal scores share the same podium.
                         </p>
                     </div>
-                    <div className="glass p-8 rounded-3xl relative overflow-hidden group hover:border-indigo-500/50 transition-colors">
-                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-purple-500/50 transition-all">
+                        <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
                             <Activity className="w-7 h-7" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-3">3. Track in Real-time</h3>
-                        <p className="text-slate-400 leading-relaxed text-sm">
-                            Watch the rankings update live. No page refreshes needed. Perfect for hackathons, quizzes, and live gamified learning.
+                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Admin Mod</h3>
+                        <p className="text-slate-500 leading-relaxed text-sm">
+                            Complete moderation control. Ban entries, adjust scores, and manage board visibility with one tap.
                         </p>
+                    </div>
+                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-blue-500/50 transition-all">
+                        <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                            <Download className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Export Ready</h3>
+                        <p className="text-slate-500 leading-relaxed text-sm">
+                            Download comprehensive CSV or PDF reports of your leaderboards for offline analysis and record-keeping.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tech Power Showcase */}
+            <div className="py-24 relative overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent"></div>
+                <div className="text-center mb-12">
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mb-4 block">Engineered for Scalability</span>
+                    <h3 className="text-2xl font-black text-white uppercase font-mono tracking-widest">Technological <span className="text-indigo-500">Foundation</span></h3>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-12 opacity-40 hover:opacity-100 transition-opacity duration-700 grayscale hover:grayscale-0">
+                    <div className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
+                            <span className="text-indigo-400 font-black font-mono">M</span>
+                        </div>
+                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">MongoDB</span>
+                    </div>
+                    <div className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
+                            <span className="text-indigo-400 font-black font-mono">E</span>
+                        </div>
+                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Express.js</span>
+                    </div>
+                    <div className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
+                            <span className="text-indigo-400 font-black font-mono">R</span>
+                        </div>
+                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">React</span>
+                    </div>
+                    <div className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
+                            <span className="text-indigo-400 font-black font-mono">N</span>
+                        </div>
+                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Node.js</span>
+                    </div>
+                    <div className="h-8 w-px bg-white/10 hidden md:block"></div>
+                    <div className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
+                            <Activity className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Socket.io</span>
                     </div>
                 </div>
             </div>

@@ -2,7 +2,19 @@ import React from 'react';
 import { Trophy } from 'lucide-react';
 import API_URL from '../config';
 
+import { useAuth } from '../App';
+import { useNavigate } from 'react-router-dom';
+
 const Login = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
+    React.useEffect(() => {
+        if (user) {
+            navigate('/');
+        }
+    }, [user, navigate]);
+
     const handleGoogleLogin = () => {
         window.location.href = `${API_URL}/auth/google`;
     };

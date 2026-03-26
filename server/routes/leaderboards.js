@@ -41,10 +41,32 @@ router.post('/create', auth, async (req, res) => {
 
 const LeaderboardEntry = require('../models/Leaderboard');
 
-// Get all leaderboards
+// Get all leaderboards (with pagination and search)
 router.get('/', async (req, res) => {
     try {
-        const leaderboards = await Leaderboard.find().sort({ createdAt: -1 }).lean();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || '';
+        const status = req.query.status; // 'live' or 'maintenance'
+
+        const query = {};
+        if (search) {
+            query.name = { $regex: search, $options: 'i' };
+        }
+        if (status === 'live') {
+            query.isLive = true;
+        } else if (status === 'maintenance') {
+            query.isLive = false;
+        }
+
+        const skip = (page - 1) * limit;
+
+        const totalBoards = await Leaderboard.countDocuments(query);
+        const leaderboards = await Leaderboard.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
 
         // Add entry count for each leaderboard
         const enhancedLeaderboards = await Promise.all(leaderboards.map(async (lb) => {
@@ -52,7 +74,15 @@ router.get('/', async (req, res) => {
             return { ...lb, entryCount };
         }));
 
-        res.json(enhancedLeaderboards);
+        res.json({
+            leaderboards: enhancedLeaderboards,
+            pagination: {
+                totalBoards,
+                totalPages: Math.ceil(totalBoards / limit),
+                currentPage: page,
+                limit
+            }
+        });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
