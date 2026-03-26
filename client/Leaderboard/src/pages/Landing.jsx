@@ -117,40 +117,41 @@ const Landing = () => {
                 <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium">
                     The ultimate student ranking platform. Create, share, and track performance in complete real-time.
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mt-6">
-                        <a 
-                            href="/EliteLeaderboard.apk"
-                            download="EliteLeaderboard.apk"
-                            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-2xl text-white hover:from-indigo-400 hover:to-indigo-600 transition-all duration-300 shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_50px_rgba(99,102,241,0.5)] active:scale-95 border border-indigo-400/30 overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                            <Download className="w-6 h-6 relative z-10 group-hover:-translate-y-1 transition-transform duration-300" />
-                            <div className="relative z-10 flex flex-col items-start leading-none text-left">
-                                <span className="text-[10px] uppercase tracking-wider text-indigo-200 font-bold mb-1">Android App</span>
-                                <span className="font-black text-lg tracking-wide">Direct Download</span>
-                            </div>
-                        </a>
-                        <a 
-                            href="https://expo.dev/accounts/parasmani/projects/eliteboards-mobile/builds/0c356e6a-4704-4e0e-ae41-990293c9052d"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group relative flex w-full sm:w-auto items-center justify-center gap-3 px-8 py-4 bg-slate-800/80 backdrop-blur-md rounded-2xl text-slate-300 hover:text-white transition-all duration-300 hover:bg-slate-700/80 shadow-xl active:scale-95 border border-slate-700 hover:border-indigo-500/50"
-                        >
-                            <ExternalLink className="w-6 h-6 text-slate-400 group-hover:text-indigo-400 transition-colors duration-300" />
-                            <div className="flex flex-col items-start leading-none text-left">
-                                <span className="text-[10px] uppercase tracking-wider text-slate-500 group-hover:text-indigo-300 font-bold mb-1 transition-colors duration-300">Alternative</span>
-                                <span className="font-black text-lg tracking-wide">Expo Build</span>
-                            </div>
-                        </a>
-                    </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+                    <a 
+                        href="/EliteLeaderboard.apk"
+                        download="EliteLeaderboard.apk"
+                        className="group relative flex w-full sm:w-auto items-center justify-center gap-4 px-8 py-4 bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-2xl text-white hover:from-indigo-400 hover:to-indigo-600 transition-all duration-300 shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_50px_rgba(99,102,241,0.5)] active:scale-95 border border-indigo-400/30 overflow-hidden"
+                    >
+                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                        <Download className="w-6 h-6 relative z-10 group-hover:-translate-y-1 transition-transform duration-300" />
+                        <div className="relative z-10 flex flex-col items-start leading-none text-left">
+                            <span className="text-[10px] uppercase tracking-wider text-indigo-200 font-bold mb-1">Android App</span>
+                            <span className="font-black text-lg tracking-wide">Direct Download</span>
+                        </div>
+                    </a>
+                    <a 
+                        href="https://expo.dev/accounts/parasmani/projects/eliteboards-mobile/builds/19a4d54f-08af-482c-8fe3-a74833a4f9fe"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative flex w-full sm:w-auto items-center justify-center gap-4 px-8 py-4 bg-slate-800/80 backdrop-blur-md rounded-2xl text-slate-300 hover:text-white transition-all duration-300 hover:bg-slate-700/80 shadow-[0_0_30px_rgba(30,41,59,0.5)] hover:shadow-[0_0_50px_rgba(99,102,241,0.15)] active:scale-95 border border-slate-700 hover:border-indigo-500/50"
+                    >
+                        <ExternalLink className="w-6 h-6 text-slate-400 group-hover:text-indigo-400 transition-colors duration-300" />
+                        <div className="flex flex-col items-start leading-none text-left">
+                            <span className="text-[10px] uppercase tracking-wider text-slate-500 group-hover:text-indigo-300 font-bold mb-1 transition-colors duration-300">Alternative</span>
+                            <span className="font-black text-lg tracking-wide">Expo Build</span>
+                        </div>
+                    </a>
                     {user && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 text-white"
+                            className="group relative flex w-full sm:w-auto items-center justify-center gap-4 px-8 py-4 bg-indigo-600 rounded-2xl text-white hover:bg-indigo-500 transition-all duration-300 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:shadow-[0_0_50px_rgba(79,70,229,0.5)] active:scale-95 border border-indigo-400/30 overflow-hidden"
                         >
-                            <Plus className="w-5 h-5" />
-                            Create New Board
+                            <Plus className="w-6 h-6 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
+                            <div className="relative z-10 flex flex-col items-start leading-none text-left">
+                                <span className="text-[10px] uppercase tracking-wider text-indigo-200 font-bold mb-1">Management</span>
+                                <span className="font-black text-lg tracking-wide">Create New Board</span>
+                            </div>
                         </button>
                     )}
                 </div>
