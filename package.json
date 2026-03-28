@@ -1,0 +1,11 @@
+{
+  "name": "eliteboards-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "npm run test:server && npm run test:web && npm run test:mobile",
+    "test:server": "npm --prefix server test",
+    "test:web": "npm --prefix client/Leaderboard run check",
+    "test:mobile": "npm --prefix mobile/eliteboards-mobile run typecheck && npm --prefix mobile/eliteboards-mobile run check-config && npm --prefix mobile/eliteboards-mobile run doctor"
+  }
+}

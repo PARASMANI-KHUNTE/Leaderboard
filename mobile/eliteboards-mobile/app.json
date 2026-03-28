@@ -2,6 +2,7 @@
   "expo": {
     "name": "eliteboards-mobile",
     "slug": "eliteboards-mobile",
+    "description": "EliteBoards mobile app for real-time leaderboard participation, moderation, and notifications.",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "eliteboards",
