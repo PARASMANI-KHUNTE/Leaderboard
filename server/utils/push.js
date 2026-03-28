@@ -1,11 +1,18 @@
 const webPush = require('web-push');
 
-// Use environment variables for VAPID keys
-webPush.setVapidDetails(
-    'mailto:parasmanikhunte@gmail.com', // Contact email
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-);
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const pushNotificationsEnabled = Boolean(vapidPublicKey && vapidPrivateKey);
+
+if (pushNotificationsEnabled) {
+    webPush.setVapidDetails(
+        'mailto:parasmanikhunte@gmail.com',
+        vapidPublicKey,
+        vapidPrivateKey
+    );
+} else {
+    console.warn('[push] VAPID keys missing. Web push notifications are disabled.');
+}
 
 /**
  * Send a push notification to a specific user's registered browsers.
@@ -13,6 +20,10 @@ webPush.setVapidDetails(
  * @param {Object} payload - The notification payload (title, body, etc.).
  */
 const sendPushNotification = async (user, payload) => {
+    if (!pushNotificationsEnabled) {
+        return;
+    }
+
     if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
         return;
     }
@@ -48,4 +59,7 @@ const sendPushNotification = async (user, payload) => {
     }
 };
 
-module.exports = { sendPushNotification };
+module.exports = {
+    sendPushNotification,
+    pushNotificationsEnabled,
+};

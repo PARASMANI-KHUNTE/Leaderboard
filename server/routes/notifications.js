@@ -2,9 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { User } = require('../models/User');
 const { auth } = require('../middleware/auth');
+const { pushNotificationsEnabled } = require('../utils/push');
 
 // Get VAPID public key
 router.get('/vapid-public-key', (req, res) => {
+    if (!pushNotificationsEnabled) {
+        return res.status(503).json({ message: 'Push notifications are disabled on this server' });
+    }
+
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
     if (!vapidPublicKey) {
         return res.status(500).json({ message: 'VAPID public key not found on server' });
@@ -14,6 +19,10 @@ router.get('/vapid-public-key', (req, res) => {
 
 // Subscribe to push notifications
 router.post('/subscribe', auth, async (req, res) => {
+    if (!pushNotificationsEnabled) {
+        return res.status(503).json({ message: 'Push notifications are disabled on this server' });
+    }
+
     const subscription = req.body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
@@ -42,6 +51,10 @@ router.post('/subscribe', auth, async (req, res) => {
 
 // Unsubscribe from push notifications
 router.post('/unsubscribe', auth, async (req, res) => {
+    if (!pushNotificationsEnabled) {
+        return res.status(503).json({ message: 'Push notifications are disabled on this server' });
+    }
+
     const subscription = req.body;
 
     if (!subscription || !subscription.endpoint) {
