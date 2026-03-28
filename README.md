@@ -100,6 +100,7 @@ That command runs:
 - [Production Readiness](docs/production-readiness.md)
 - [Testing and CI](docs/testing-and-ci.md)
 - [Mobile OTA Updates](docs/mobile-ota.md)
+- [Mobile Release Checklist](docs/mobile-release-checklist.md)
 - [Legacy Feature Report](doc/ELiteBoards_Feature_Report.md)
 
 ## Notes

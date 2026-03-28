@@ -18,10 +18,14 @@ import * as SplashScreen from 'expo-splash-screen';
 
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
-SplashScreen.setOptions({
-  duration: 0,
-  fade: false,
-});
+const isExpoGo = Constants.appOwnership === 'expo';
+
+if (!isExpoGo) {
+  SplashScreen.setOptions({
+    duration: 0,
+    fade: false,
+  });
+}
 
 // Keep the native splash as a plain handoff, then switch directly to the custom loader.
 SplashScreen.preventAutoHideAsync();

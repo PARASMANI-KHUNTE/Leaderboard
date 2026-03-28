@@ -40,3 +40,5 @@ Keep a short OTA release checklist with:
 - one login flow test
 - one leaderboard fetch test
 - one realtime notification test
+
+For a concrete release checklist, use [Mobile Release Checklist](mobile-release-checklist.md).

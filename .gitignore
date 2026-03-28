@@ -1,0 +1,25 @@
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Mobile generated exports and diagnostics
+mobile/eliteboards-mobile/dist-export/
+mobile/eliteboards-mobile/dist-export-final/
+mobile/eliteboards-mobile/dist-export-verify/
+mobile/eliteboards-mobile/doctor*.txt
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

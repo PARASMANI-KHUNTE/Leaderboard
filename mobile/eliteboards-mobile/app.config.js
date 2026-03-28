@@ -2,6 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 function getEnvUrl() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return String(process.env.EXPO_PUBLIC_API_URL).trim().replace(/['"]/g, '');
+  }
+
   try {
     const envPath = path.resolve(__dirname, '.env');
     if (!fs.existsSync(envPath)) {

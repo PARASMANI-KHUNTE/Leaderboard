@@ -11,8 +11,12 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-export/
+dist-export-final/
+dist-export-verify/
 web-build/
 expo-env.d.ts
+doctor*.txt
 
 # Native
 /ios

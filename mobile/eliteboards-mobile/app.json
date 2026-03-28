@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "eliteboards",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#020617"
@@ -30,9 +30,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#020617",
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/logo.png"
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.parasmanikhunte.eliteboards"
