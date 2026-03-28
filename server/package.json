@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "check": "node --check index.js && node --check routes/auth.js && node --check routes/admin.js && node --check routes/leaderboard.js && node --check routes/leaderboards.js && node --check routes/reports.js && node --check routes/feedback.js",
+    "check": "node --check index.js && node --check routes/auth.js && node --check routes/admin.js && node --check routes/leaderboard.js && node --check routes/leaderboards.js && node --check routes/reports.js && node --check routes/feedback.js && node --check routes/notifications.js",
     "test:unit": "node --test ./test/auth-and-routes.test.js",
     "test": "npm run check && npm run test:unit"
   },
