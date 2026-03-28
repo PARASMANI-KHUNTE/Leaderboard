@@ -6,10 +6,22 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 const { auth } = require('../middleware/auth');
-const { validateLeaderboardEntry, validateObjectId } = require('../middleware/validation');
+const {
+    validateLeaderboardEntry,
+    validateLeaderboardEntryEdit,
+    validateObjectId,
+} = require('../middleware/validation');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+
+function hasUserReaction(reactions = [], userId) {
+    return reactions.some((id) => String(id) === String(userId));
+}
+
+function removeUserReaction(reactions = [], userId) {
+    return reactions.filter((id) => String(id) !== String(userId));
+}
 
 function encodeCursor(cursorObj) {
     return Buffer.from(JSON.stringify(cursorObj)).toString('base64url');
@@ -245,7 +257,7 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
 });
 
 // Edit entry
-router.put('/edit/:id', auth, async (req, res) => {
+router.put('/edit/:id', auth, validateObjectId(), validateLeaderboardEntryEdit, async (req, res) => {
     const { name, cgpa, marks } = req.body;
 
     try {
@@ -256,7 +268,7 @@ router.put('/edit/:id', auth, async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to edit this entry' });
         }
 
-        entry.name = name || entry.name;
+        if (name !== undefined) entry.name = String(name).trim().slice(0, 100);
         if (cgpa !== undefined) entry.cgpa = parseFloat(cgpa);
         if (marks !== undefined) {
             entry.marks = (marks !== null) ? parseFloat(marks) : null;
@@ -322,19 +334,19 @@ router.post('/react/:id', auth, async (req, res) => {
         const userId = req.user.id;
         if (!entry.likedBy) entry.likedBy = [];
         if (!entry.dislikedBy) entry.dislikedBy = [];
-        const likeIndex = entry.likedBy.indexOf(userId);
-        const dislikeIndex = entry.dislikedBy.indexOf(userId);
+        const hasLike = hasUserReaction(entry.likedBy, userId);
+        const hasDislike = hasUserReaction(entry.dislikedBy, userId);
 
         let isLiked = false;
 
         // If currently disliked, remove the dislike
-        if (dislikeIndex > -1) {
-            entry.dislikedBy.splice(dislikeIndex, 1);
+        if (hasDislike) {
+            entry.dislikedBy = removeUserReaction(entry.dislikedBy, userId);
         }
 
-        if (likeIndex > -1) {
+        if (hasLike) {
             // Unlike
-            entry.likedBy.splice(likeIndex, 1);
+            entry.likedBy = removeUserReaction(entry.likedBy, userId);
         } else {
             // Like
             entry.likedBy.push(userId);
@@ -377,19 +389,19 @@ router.post('/dislike/:id', auth, async (req, res) => {
         const userId = req.user.id;
         if (!entry.likedBy) entry.likedBy = [];
         if (!entry.dislikedBy) entry.dislikedBy = [];
-        const likeIndex = entry.likedBy.indexOf(userId);
-        const dislikeIndex = entry.dislikedBy.indexOf(userId);
+        const hasLike = hasUserReaction(entry.likedBy, userId);
+        const hasDislike = hasUserReaction(entry.dislikedBy, userId);
 
         let isDisliked = false;
 
         // If currently liked, remove the like
-        if (likeIndex > -1) {
-            entry.likedBy.splice(likeIndex, 1);
+        if (hasLike) {
+            entry.likedBy = removeUserReaction(entry.likedBy, userId);
         }
 
-        if (dislikeIndex > -1) {
+        if (hasDislike) {
             // Undislike
-            entry.dislikedBy.splice(dislikeIndex, 1);
+            entry.dislikedBy = removeUserReaction(entry.dislikedBy, userId);
         } else {
             // Dislike
             entry.dislikedBy.push(userId);

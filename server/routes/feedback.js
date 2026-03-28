@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { Feedback } = require('../models/User');
 const { auth } = require('../middleware/auth');
+const { validateFeedbackSubmit } = require('../middleware/validation');
 
 // Submit feedback
-router.post('/submit', auth, async (req, res) => {
+router.post('/submit', auth, validateFeedbackSubmit, async (req, res) => {
     const { text } = req.body;
-    if (!text) return res.status(400).json({ message: 'Feedback text is required' });
 
     try {
         const feedback = new Feedback({

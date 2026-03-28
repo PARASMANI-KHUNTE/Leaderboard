@@ -15,6 +15,7 @@ const { initRedis } = require('./config/redis');
 const { RedisStore } = require('rate-limit-redis');
 const jwt = require('jsonwebtoken');
 const { User } = require('./models/User');
+const cookie = require('cookie');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -49,8 +50,12 @@ function isAllowedOrigin(origin) {
 }
 
 async function resolveSocketUser(socket) {
+    const cookieHeader = socket.handshake?.headers?.cookie;
+    const cookieToken = cookieHeader ? cookie.parse(cookieHeader).token : null;
+
     const token =
         socket.handshake?.auth?.token ||
+        cookieToken ||
         socket.handshake?.headers?.authorization?.replace('Bearer ', '');
 
     if (!token) return null;

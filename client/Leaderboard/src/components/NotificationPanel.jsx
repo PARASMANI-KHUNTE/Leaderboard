@@ -11,7 +11,9 @@ const NotificationPanel = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = io(API_URL);
+        const socket = io(API_URL, {
+            withCredentials: true,
+        });
 
         socket.emit('joinUser', user.id);
 

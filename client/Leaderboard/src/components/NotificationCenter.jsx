@@ -17,7 +17,9 @@ const NotificationCenter = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = io(API_URL);
+        const socket = io(API_URL, {
+            withCredentials: true,
+        });
 
         if (user.isAdmin) {
             socket.emit('joinAdmin');

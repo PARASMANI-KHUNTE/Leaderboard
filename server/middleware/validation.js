@@ -37,6 +37,32 @@ const validateLeaderboardEntry = [
     handleValidationErrors
 ];
 
+const validateLeaderboardEntryEdit = [
+    body('name')
+        .optional()
+        .trim()
+        .notEmpty().withMessage('Name cannot be empty')
+        .isLength({ min: 1, max: 100 }).withMessage('Name must be 1-100 characters')
+        .escape(),
+    body('cgpa')
+        .optional()
+        .isFloat({ min: 0, max: 10 }).withMessage('CGPA must be between 0 and 10'),
+    body('marks')
+        .optional({ nullable: true })
+        .isFloat({ min: 0, max: 700 }).withMessage('Marks must be between 0 and 700'),
+    body().custom((value) => {
+        const hasEditableField =
+            Object.prototype.hasOwnProperty.call(value, 'name') ||
+            Object.prototype.hasOwnProperty.call(value, 'cgpa') ||
+            Object.prototype.hasOwnProperty.call(value, 'marks');
+        if (!hasEditableField) {
+            throw new Error('At least one editable field is required');
+        }
+        return true;
+    }),
+    handleValidationErrors
+];
+
 const validateReportSubmit = [
     body('entryId')
         .notEmpty().withMessage('Entry ID is required')
@@ -74,6 +100,7 @@ const validateSearchQuery = [
 module.exports = {
     validateLeaderboardCreate,
     validateLeaderboardEntry,
+    validateLeaderboardEntryEdit,
     validateReportSubmit,
     validateFeedbackSubmit,
     validateObjectId,

@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { Report } = require('../models/User');
 const { auth } = require('../middleware/auth');
+const { validateReportSubmit } = require('../middleware/validation');
 
 // Submit a report
-router.post('/submit', auth, async (req, res) => {
+router.post('/submit', auth, validateReportSubmit, async (req, res) => {
     const { entryId, reason } = req.body;
-    if (!entryId || !reason) return res.status(400).json({ message: 'Entry ID and reason are required' });
 
     try {
         const report = new Report({
