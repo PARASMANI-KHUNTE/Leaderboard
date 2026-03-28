@@ -11,6 +11,7 @@ const {
     validateLeaderboardEntryEdit,
     validateObjectId,
 } = require('../middleware/validation');
+const { sendPushNotification } = require('../utils/push');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;

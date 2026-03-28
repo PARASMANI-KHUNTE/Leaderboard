@@ -28,6 +28,14 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    pushSubscriptions: [{
+        endpoint: String,
+        expirationTime: Number,
+        keys: {
+            p256dh: String,
+            auth: String
+        }
+    }]
 }, { timestamps: true });
 
 const ReportSchema = new mongoose.Schema({

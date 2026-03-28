@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Heart, MessageSquare, Flag, Trash2, ThumbsDown } from 'lucide-react';
+import { Bell, Heart, MessageSquare, Flag, Trash2, ThumbsDown, Monitor, BellOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import API_URL from '../config';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 const NotificationCenter = () => {
     const { user } = useAuth();
@@ -12,6 +13,7 @@ const NotificationCenter = () => {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const { isSubscribed, subscribeToPush, unsubscribeFromPush } = usePushNotifications(user);
 
     useEffect(() => {
         if (!user) return;
@@ -84,7 +86,16 @@ const NotificationCenter = () => {
                             className="absolute right-0 mt-3 w-80 bg-slate-950/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl z-[1001] overflow-hidden"
                         >
                             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/2">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Notifications</h3>
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Notifications</h3>
+                                    <button 
+                                        onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
+                                        className={`p-1.5 rounded-lg transition-all ${isSubscribed ? 'text-indigo-400 bg-indigo-400/10' : 'text-slate-500 hover:text-white bg-white/5'}`}
+                                        title={isSubscribed ? 'Disable Desktop Alerts' : 'Enable Desktop Alerts'}
+                                    >
+                                        {isSubscribed ? <Monitor className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                                    </button>
+                                </div>
                                 {notifications.length > 0 && (
                                     <button onClick={clearAll} className="text-[10px] font-bold text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1">
                                         <Trash2 className="w-3 h-3" /> Clear
