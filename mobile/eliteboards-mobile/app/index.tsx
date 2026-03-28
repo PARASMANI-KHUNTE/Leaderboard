@@ -165,7 +165,7 @@ export default function Home() {
             />
             
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitleMain}>Real-Time Leaderboards for Competitive Minds</Text>
+              <Text style={styles.heroTitleMain}>Real-Time Leaderboards v1.1.0 (OTA Active) 🚀</Text>
               <Text style={styles.heroSub}>
                 Track performance, manage rankings, and stay ahead — all in one powerful system designed for the next generation of students.
               </Text>

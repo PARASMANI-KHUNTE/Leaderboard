@@ -11,6 +11,8 @@ node_modules/
 dist/
 build/
 coverage/
+*.apk
+*.aab
 
 # Mobile generated exports and diagnostics
 mobile/eliteboards-mobile/dist-export/
@@ -23,3 +25,4 @@ mobile/eliteboards-mobile/doctor*.txt
 Thumbs.db
 .vscode/
 .idea/
+.kilocode/
