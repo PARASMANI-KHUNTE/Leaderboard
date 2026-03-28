@@ -77,11 +77,9 @@ async function resolveSocketUser(socket) {
 
 const io = socketIo(server, {
     cors: {
-        origin: (origin, cb) => {
-            if (isAllowedOrigin(origin)) return cb(null, true);
-            cb(new Error('Origin not allowed by Socket.IO CORS'));
-        },
-        methods: ["GET", "POST"]
+        origin: allowedOrigins,
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 

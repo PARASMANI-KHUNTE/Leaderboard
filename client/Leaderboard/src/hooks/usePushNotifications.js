@@ -7,6 +7,16 @@ const usePushNotifications = (user) => {
     const [subscription, setSubscription] = useState(null);
     const [registration, setRegistration] = useState(null);
 
+    const syncSubscriptionWithBackend = async (sub) => {
+        try {
+            await axios.post(`${API_URL}/api/notifications/subscribe`, sub, {
+                withCredentials: true
+            });
+        } catch (err) {
+            console.error('Error syncing push subscription:', err);
+        }
+    };
+
     useEffect(() => {
         if (!user) return;
 
@@ -28,21 +38,11 @@ const usePushNotifications = (user) => {
         }
     }, [user]);
 
-    const syncSubscriptionWithBackend = async (sub) => {
-        try {
-            await axios.post(`${API_URL}/notifications/subscribe`, sub, {
-                withCredentials: true
-            });
-        } catch (err) {
-            console.error('Error syncing push subscription:', err);
-        }
-    };
-
     const subscribeToPush = async () => {
         if (!registration) return;
 
         try {
-            const response = await axios.get(`${API_URL}/notifications/vapid-public-key`);
+            const response = await axios.get(`${API_URL}/api/notifications/vapid-public-key`);
             const { publicKey } = response.data;
 
             const sub = await registration.pushManager.subscribe({
@@ -65,7 +65,7 @@ const usePushNotifications = (user) => {
 
         try {
             await subscription.unsubscribe();
-            await axios.post(`${API_URL}/notifications/unsubscribe`, {
+            await axios.post(`${API_URL}/api/notifications/unsubscribe`, {
                 endpoint: subscription.endpoint
             }, { withCredentials: true });
             
