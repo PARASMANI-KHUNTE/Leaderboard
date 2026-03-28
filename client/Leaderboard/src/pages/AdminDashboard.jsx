@@ -45,15 +45,9 @@ const AdminDashboard = () => {
     const fetchAdminData = async () => {
         try {
             const [repRes, feedRes, userRes] = await Promise.all([
-                axios.get(`${API_URL}/api/admin/reports`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                }),
-                axios.get(`${API_URL}/api/admin/feedback`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                }),
-                axios.get(`${API_URL}/api/admin/users${searchQuery ? `?search=${searchQuery}` : ''}`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                })
+                axios.get(`${API_URL}/api/admin/reports`),
+                axios.get(`${API_URL}/api/admin/feedback`),
+                axios.get(`${API_URL}/api/admin/users${searchQuery ? `?search=${searchQuery}` : ''}`)
             ]);
             setReports(repRes.data);
             setFeedback(feedRes.data);
@@ -71,9 +65,7 @@ const AdminDashboard = () => {
 
     const handleResolve = async (reportId, action) => {
         try {
-            await axios.post(`${API_URL}/api/admin/resolve-report/${reportId}`, { action }, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.post(`${API_URL}/api/admin/resolve-report/${reportId}`, { action });
             setReports(prev => prev.filter(r => r._id !== reportId));
             showAlert('Status', 'Action completed');
         } catch (err) {
@@ -83,11 +75,9 @@ const AdminDashboard = () => {
 
     const handleToggleBan = async (userId) => {
         try {
-            const res = await axios.post(`${API_URL}/api/admin/toggle-ban/${userId}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            const res = await axios.post(`${API_URL}/api/admin/toggle-ban/${userId}`, {});
             showAlert('Success', res.data.message);
-            fetchAdminData(); // Refresh list
+            fetchAdminData();
         } catch (err) {
             showAlert('Error', 'Failed to toggle ban');
         }
@@ -95,9 +85,7 @@ const AdminDashboard = () => {
 
     const handleToggleRead = async (feedbackId) => {
         try {
-            const res = await axios.patch(`${API_URL}/api/admin/feedback/${feedbackId}/toggle-read`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            const res = await axios.patch(`${API_URL}/api/admin/feedback/${feedbackId}/toggle-read`, {});
             setFeedback(prev => prev.map(f => f._id === feedbackId ? res.data : f));
         } catch (err) {
             showAlert('Error', 'Failed to update feedback status');
@@ -109,9 +97,7 @@ const AdminDashboard = () => {
         if (!ok) return;
 
         try {
-            await axios.delete(`${API_URL}/api/admin/feedback/${feedbackId}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/api/admin/feedback/${feedbackId}`);
             setFeedback(prev => prev.filter(f => f._id !== feedbackId));
             showAlert('Success', 'Feedback deleted');
         } catch (err) {
@@ -273,9 +259,7 @@ const AdminDashboard = () => {
                                                 const ok = await showConfirm('Delete User', `Are you sure you want to PERMANENTLY delete ${u.displayName}? This will purge all their entries, likes, and feedback.`);
                                                 if (!ok) return;
                                                 try {
-                                                    await axios.delete(`${API_URL}/api/admin/user/${u._id}`, {
-                                                        headers: { Authorization: `Bearer ${user.token}` }
-                                                    });
+                                                    await axios.delete(`${API_URL}/api/admin/user/${u._id}`);
                                                     setUsers(prev => prev.filter(user => user._id !== u._id));
                                                     showAlert('Success', 'User and all data purged.');
                                                 } catch (err) {

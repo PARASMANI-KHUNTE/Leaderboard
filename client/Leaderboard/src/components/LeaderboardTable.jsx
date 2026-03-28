@@ -82,9 +82,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
         }
 
         try {
-            await axios.post(`${API_URL}/api/leaderboard/react/${id}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.post(`${API_URL}/api/leaderboard/react/${id}`, {});
         } catch (err) {
             console.error('Failed to react');
         }
@@ -94,13 +92,11 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
         e.stopPropagation();
         if (!user) return showAlert('Login Required', 'Please login to react');
         
-        // Optimistic Update
         const targetEntry = entries.find(entry => entry._id === id);
         if (targetEntry) {
             const hasLiked = (targetEntry.likedBy || []).some(uId => String(uId) === String(user.id));
             const hasDisliked = (targetEntry.dislikedBy || []).some(uId => String(uId) === String(user.id));
             
-            // Replicate server mutual exclusion logic locally
             const simulatedLikedBy = hasLiked
                 ? (targetEntry.likedBy || []).filter(uId => String(uId) !== String(user.id))
                 : [...(targetEntry.likedBy || [])];
@@ -113,9 +109,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
         }
 
         try {
-            await axios.post(`${API_URL}/api/leaderboard/dislike/${id}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.post(`${API_URL}/api/leaderboard/dislike/${id}`, {});
         } catch (err) {
             console.error('Failed to dislike');
         }

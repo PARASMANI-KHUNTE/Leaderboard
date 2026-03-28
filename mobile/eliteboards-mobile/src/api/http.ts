@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-export const API_URL = Constants.expoConfig?.extra?.API_URL ?? 'http://localhost:5000';
+import { API_URL } from '../config/env';
 
 export function createHttpClient(token?: string | null) {
   return axios.create({

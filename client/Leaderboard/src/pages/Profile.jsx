@@ -41,12 +41,8 @@ const Profile = () => {
     const fetchData = async () => {
         try {
             const [boardsRes, profileRes] = await Promise.all([
-                axios.get(`${API_URL}/auth/joined-leaderboards`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                }),
-                axios.get(`${API_URL}/auth/profile`, {
-                    headers: { Authorization: `Bearer ${user.token}` }
-                })
+                axios.get(`${API_URL}/auth/joined-leaderboards`),
+                axios.get(`${API_URL}/auth/profile`)
             ]);
             setJoinedBoards(boardsRes.data);
             setStats(profileRes.data.stats || { heartsEarned: 0, totalSubmissions: 0 });
@@ -76,9 +72,7 @@ const Profile = () => {
         if (!ok2) return;
 
         try {
-            await axios.delete(`${API_URL}/auth/delete-account`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/auth/delete-account`);
             showAlert('Success', 'Account deleted successfully');
             logout();
             navigate('/login');

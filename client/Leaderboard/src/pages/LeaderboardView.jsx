@@ -153,9 +153,7 @@ const LeaderboardView = () => {
 
     const handleToggleStatus = async () => {
         try {
-            const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${leaderboard._id}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${leaderboard._id}`, {});
             setLeaderboard(res.data);
             showAlert('Updated', `Leaderboard is now ${res.data.isLive ? 'LIVE' : 'DOWN'}`);
         } catch (err) {
@@ -174,9 +172,7 @@ const LeaderboardView = () => {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`${API_URL}/api/leaderboards/${leaderboard._id}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/api/leaderboards/${leaderboard._id}`);
             showAlert('Deleted', 'Leaderboard and all data removed.');
             navigate('/');
         } catch (err) {
@@ -197,8 +193,6 @@ const LeaderboardView = () => {
             await axios.post(`${API_URL}/api/reports/submit`, {
                 entryId: reportModal,
                 reason: reportReason
-            }, {
-                headers: { Authorization: `Bearer ${user.token}` }
             });
             showAlert('Report Received', 'Report submitted. Admins will review it.');
             setReportModal(null);
@@ -212,9 +206,7 @@ const LeaderboardView = () => {
         const ok = await showConfirm('Delete Entry', 'Are you sure you want to delete your entry?');
         if (!ok) return;
         try {
-            await axios.delete(`${API_URL}/api/leaderboard/delete/${id}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/api/leaderboard/delete/${id}`);
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to delete entry');
         }

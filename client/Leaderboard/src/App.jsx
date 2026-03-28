@@ -16,6 +16,8 @@ import CustomModal from './components/CustomModal';
 import FeedbackForm from './components/FeedbackForm';
 import { ToastProvider } from './components/Toast';
 
+axios.defaults.withCredentials = true;
+
 const AuthContext = createContext();
 const ModalContext = createContext();
 
@@ -63,45 +65,38 @@ const ModalProvider = ({ children }) => {
 };
 
 const AuthProvider = ({ children }) => {
-  // ... (AuthProvider logic)
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { showAlert } = useModal();
 
-  const fetchProfile = async (token) => {
+  const logout = React.useCallback(() => {
+    setUser(null);
+    setLoading(false);
+    window.location.href = `${API_URL}/auth/logout`;
+  }, []);
+
+  const fetchProfile = React.useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser({ ...res.data, token });
+      const res = await axios.get(`${API_URL}/auth/profile`);
+      setUser(res.data);
     } catch (err) {
       console.error('Failed to fetch profile', err);
       if (err.response?.status === 403) {
-        showAlert('Banned', 'Your account has been banned.');
+        await showAlert('Banned', 'Your account has been banned.');
       }
-      logout();
+      setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [showAlert]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchProfile(token);
-    } else {
-      setLoading(false);
-    }
-  }, []);
+    fetchProfile();
+  }, [fetchProfile]);
 
-  const login = (token) => {
-    localStorage.setItem('token', token);
-    fetchProfile(token);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
+  const login = React.useCallback(() => {
+    return fetchProfile();
+  }, [fetchProfile]);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
@@ -114,15 +109,33 @@ const LoginSuccess = () => {
   const [searchParams] = useSearchParams();
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      login(token);
-    } else if (!user) {
-      navigate('/login');
-    }
-  }, [searchParams]);
+    const code = searchParams.get('code');
+
+    const exchange = async () => {
+      if (user) {
+        navigate('/', { replace: true });
+        return;
+      }
+
+      if (!code) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      try {
+        await axios.post(`${API_URL}/auth/exchange`, { code });
+        await login();
+        navigate('/', { replace: true });
+      } catch {
+        setError('Could not complete sign-in.');
+      }
+    };
+
+    exchange();
+  }, [searchParams, user, navigate, login]);
 
   useEffect(() => {
     if (user) {
@@ -133,7 +146,9 @@ const LoginSuccess = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen space-y-4">
       <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      <div className="text-xl font-mono tracking-widest animate-pulse">LOGGING_IN...</div>
+      <div className="text-xl font-mono tracking-widest animate-pulse">
+        {error || 'LOGGING_IN...'}
+      </div>
     </div>
   );
 };

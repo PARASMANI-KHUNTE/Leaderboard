@@ -1,19 +1,24 @@
 import { io, Socket } from 'socket.io-client';
-import Constants from 'expo-constants';
-
-const API_URL = Constants.expoConfig?.extra?.API_URL ?? 'http://localhost:5000';
+import { API_URL } from '../config/env';
 
 let socket: Socket | null = null;
+let authToken: string | null = null;
+
+export function setSocketAuthToken(token: string | null) {
+  authToken = token;
+  if (socket) {
+    socket.auth = authToken ? { token: authToken } : {};
+  }
+}
 
 export function getSocket() {
   if (socket) return socket;
 
-  // Backend listens on a single origin; for now we reuse API_URL for sockets too.
   socket = io(API_URL, {
     autoConnect: false,
     transports: ['websocket'],
+    auth: authToken ? { token: authToken } : {},
   });
 
   return socket;
 }
-

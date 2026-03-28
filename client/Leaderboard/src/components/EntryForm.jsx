@@ -50,16 +50,14 @@ const EntryForm = ({ leaderboardId, editingEntry, entries, onCancel, onSuccess }
             if (editingEntry) {
                 await axios.put(
                     `${API_URL}/api/leaderboard/edit/${editingEntry._id}`,
-                    data,
-                    { headers: { Authorization: `Bearer ${user.token}` } }
+                    data
                 );
                 setStatus('success');
                 setMessage('Entry updated successfully!');
             } else {
                 await axios.post(
                     `${API_URL}/api/leaderboard/submit`,
-                    { ...data, leaderboardId },
-                    { headers: { Authorization: `Bearer ${user.token}` } }
+                    { ...data, leaderboardId }
                 );
                 setStatus('success');
                 setMessage('Entry submitted successfully!');

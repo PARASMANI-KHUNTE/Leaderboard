@@ -18,6 +18,10 @@ function getEnvUrl() {
 export default ({ config }) => {
   const envUrl = getEnvUrl();
   
+  if (!envUrl) {
+    throw new Error('EXPO_PUBLIC_API_URL must be set in .env file for production builds');
+  }
+  
   return {
     ...config,
     ios: {
@@ -34,7 +38,7 @@ export default ({ config }) => {
     },
     extra: {
       ...config.extra,
-      API_URL: envUrl || 'http://localhost:5000',
+      API_URL: envUrl,
     },
   };
 };

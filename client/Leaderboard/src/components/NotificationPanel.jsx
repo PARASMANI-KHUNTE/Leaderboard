@@ -15,7 +15,6 @@ const NotificationPanel = () => {
 
         socket.emit('joinUser', user.id);
 
-        // Listen for global notifications (real-time toasters)
         socket.on('globalNotification', (notif) => {
             addToast(notif.message, notif.type);
         });
@@ -30,7 +29,7 @@ const NotificationPanel = () => {
         return () => socket.disconnect();
     }, [user, addToast]);
 
-    return null; // Logic-only component now, Toast system handles UI
+    return null;
 };
 
 export default NotificationPanel;

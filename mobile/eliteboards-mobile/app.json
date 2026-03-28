@@ -8,8 +8,6 @@
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/logo.png",
-      "resizeMode": "contain",
       "backgroundColor": "#020617"
     },
     "updates": {
@@ -17,7 +15,6 @@
       "url": "https://u.expo.dev/83fb6e86-1c2f-49cb-aaf7-d3193421ba54"
     },
     "extra": {
-      "API_URL": "https://leaderboard-backend-3pek.onrender.com",
       "eas": {
         "projectId": "83fb6e86-1c2f-49cb-aaf7-d3193421ba54"
       }

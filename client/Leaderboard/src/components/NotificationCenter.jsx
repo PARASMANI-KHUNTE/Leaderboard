@@ -10,16 +10,9 @@ import API_URL from '../config';
 const NotificationCenter = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const { addToast } = useToast();
-    const [notifications, setNotifications] = useState(() => {
-        const saved = localStorage.getItem(`notifs_${user?.id}`);
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(() => {
-        const saved = localStorage.getItem(`unread_${user?.id}`);
-        return saved ? parseInt(saved) : 0;
-    });
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
         if (!user) return;
@@ -38,21 +31,12 @@ const NotificationCenter = () => {
             };
             setNotifications(prev => [newNotif, ...prev].slice(0, 20));
             setUnreadCount(prev => prev + 1);
-            // addToast is already called in NotificationPanel.jsx, 
-            // but we might want to consolidate logic here eventually.
         };
 
         socket.on('globalNotification', handleGlobalNotif);
 
         return () => socket.disconnect();
     }, [user]);
-
-    useEffect(() => {
-        if (user) {
-            localStorage.setItem(`notifs_${user.id}`, JSON.stringify(notifications));
-            localStorage.setItem(`unread_${user.id}`, unreadCount.toString());
-        }
-    }, [notifications, unreadCount, user]);
 
     const handleToggle = () => {
         setIsOpen(!isOpen);

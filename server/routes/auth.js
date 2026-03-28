@@ -3,6 +3,24 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const router = express.Router();
+const { getRedisClient, bumpVersion } = require('../config/redis');
+const { auth } = require('../middleware/auth');
+
+async function createOneTimeCode(userId) {
+    const AuthCode = require('../models/AuthCode');
+    const oneTimeCode = crypto.randomBytes(24).toString('hex');
+    const codeHash = crypto.createHash('sha256').update(oneTimeCode).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await AuthCode.create({
+        userId,
+        codeHash,
+        expiresAt,
+        used: false,
+    });
+
+    return oneTimeCode;
+}
 
 router.get('/google',
     (req, res, next) => {
@@ -65,24 +83,11 @@ router.get('/google/callback',
 
             console.log(`[OAuth Callback] platform=${platform} user=${req.user?._id} redirectUrl=${mobileRedirectUrl}`);
 
-            // Web continues to use the existing token-in-URL flow for compatibility.
+            const oneTimeCode = await createOneTimeCode(req.user._id);
+
             if (platform !== 'mobile') {
-                const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-                return res.redirect(`${process.env.CLIENT_URL}/login-success?token=${token}`);
+                return res.redirect(`${process.env.CLIENT_URL}/login-success?code=${encodeURIComponent(oneTimeCode)}`);
             }
-
-            // Mobile gets a short-lived one-time code (no JWT in URL).
-            const AuthCode = require('../models/AuthCode');
-            const oneTimeCode = crypto.randomBytes(24).toString('hex'); // 48-char hex
-            const codeHash = crypto.createHash('sha256').update(oneTimeCode).digest('hex');
-            const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-            await AuthCode.create({
-                userId: req.user._id,
-                codeHash,
-                expiresAt,
-                used: false,
-            });
 
             // Use client's dynamic redirect URL from state, fall back to env var for production standalone
             const deepLinkBase = mobileRedirectUrl || process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
@@ -108,7 +113,6 @@ router.post('/exchange', async (req, res) => {
         const codeHash = crypto.createHash('sha256').update(code).digest('hex');
         const now = new Date();
 
-        // Atomic check: mark as used only if the code is still valid.
         const authCode = await AuthCode.findOneAndUpdate(
             { codeHash, used: false, expiresAt: { $gt: now } },
             { $set: { used: true } },
@@ -124,7 +128,17 @@ router.post('/exchange', async (req, res) => {
             return res.status(400).json({ message: 'User not found for this code' });
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 24 * 60 * 60 * 1000,
+            path: '/'
+        });
+        
         return res.json({ token });
     } catch (err) {
         return res.status(500).json({ message: err.message || 'Exchange failed' });
@@ -132,12 +146,17 @@ router.post('/exchange', async (req, res) => {
 });
 
 router.get('/logout', (req, res) => {
-    req.logout();
-    res.redirect(process.env.CLIENT_URL);
+    req.logout(() => {
+        res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+        res.redirect(process.env.CLIENT_URL);
+    });
 });
 
-// Diagnostic endpoint — shows which critical env vars are configured (NOT the values)
-router.get('/debug', (req, res) => {
+// Diagnostic endpoint — admin only, shows which critical env vars are configured (NOT the values)
+router.get('/debug', auth, (req, res) => {
+    if (!req.user?.isAdmin) {
+        return res.status(403).json({ message: 'Admin access required' });
+    }
     const placeholders = ['your_session_secret', 'your_jwt_secret'];
     const check = (key) => {
         const val = process.env[key];
@@ -146,18 +165,18 @@ router.get('/debug', (req, res) => {
         return 'SET';
     };
     res.json({
+        NODE_ENV: process.env.NODE_ENV || 'development',
         GOOGLE_CLIENT_ID: check('GOOGLE_CLIENT_ID'),
         GOOGLE_CLIENT_SECRET: check('GOOGLE_CLIENT_SECRET'),
         GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'MISSING',
         SESSION_SECRET: check('SESSION_SECRET'),
         JWT_SECRET: check('JWT_SECRET'),
         CLIENT_URL: process.env.CLIENT_URL || 'MISSING',
-        MONGODB_URI: process.env.MONGODB_URI ? (process.env.MONGODB_URI.startsWith('mongodb://localhost') ? 'LOCAL (will fail on Render!)' : 'REMOTE') : 'MISSING',
-        MOBILE_DEEPLINK_URL: process.env.MOBILE_DEEPLINK_URL || 'MISSING (will default to eliteboards://login-success)',
+        MONGODB_URI: process.env.MONGODB_URI ? (process.env.MONGODB_URI.startsWith('mongodb://localhost') ? 'LOCAL' : 'REMOTE') : 'MISSING',
+        MOBILE_DEEPLINK_URL: process.env.MOBILE_DEEPLINK_URL || 'DEFAULT',
+        REDIS_ENABLED: !!(process.env.REDIS_URL || (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)),
     });
 });
-
-const { auth } = require('../middleware/auth');
 
 router.get('/profile', auth, async (req, res) => {
     try {
@@ -219,11 +238,13 @@ router.delete('/delete-account', auth, async (req, res) => {
     try {
         const LeaderboardEntry = require('../models/Leaderboard');
         const { User, Report, Feedback } = require('../models/User');
+        const io = req.app.get('socketio');
+        const affectedEntries = await LeaderboardEntry.find({ userId }).select('_id leaderboardId').lean();
+        const deletedEntryIds = affectedEntries.map((entry) => entry._id);
+        const leaderboardIds = [...new Set(affectedEntries.map((entry) => String(entry.leaderboardId)))];
 
-        // 1. Remove all entries by user
         await LeaderboardEntry.deleteMany({ userId });
 
-        // 2. Pull user's ID from all likedBy and dislikedBy arrays
         await LeaderboardEntry.updateMany(
             { likedBy: userId },
             { $pull: { likedBy: userId } }
@@ -233,12 +254,26 @@ router.delete('/delete-account', auth, async (req, res) => {
             { $pull: { dislikedBy: userId } }
         );
 
-        // 3. Remove user's reports and feedback
-        await Report.deleteMany({ reporterId: userId });
+        await Report.deleteMany({
+            $or: [
+                { reporterId: userId },
+                ...(deletedEntryIds.length > 0 ? [{ entryId: { $in: deletedEntryIds } }] : []),
+            ],
+        });
         await Feedback.deleteMany({ userId });
 
-        // 4. Delete user document
         await User.findByIdAndDelete(userId);
+
+        if (leaderboardIds.length > 0) {
+            const redisClient = await getRedisClient();
+            if (redisClient) {
+                await Promise.all(leaderboardIds.map((lbId) => bumpVersion(redisClient, `lb:${lbId}:version`)));
+            }
+
+            leaderboardIds.forEach((lbId) => {
+                io.to(`leaderboard:${lbId}`).emit('leaderboardChanged', { leaderboardId: lbId });
+            });
+        }
 
         res.json({ message: 'Account and all related data deleted successfully' });
     } catch (err) {

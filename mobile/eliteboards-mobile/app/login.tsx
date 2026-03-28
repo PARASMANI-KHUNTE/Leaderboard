@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/providers/AuthProvider';
 
-const API_URL = Constants.expoConfig?.extra?.API_URL ?? 'http://localhost:5000';
+import { API_URL } from '../src/config/env';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();

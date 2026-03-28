@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSocket } from './socketSingleton';
+import { getSocket, setSocketAuthToken } from './socketSingleton';
 import { useAuth } from '../providers/AuthProvider';
 
 type RealtimeContextValue = {
@@ -17,21 +17,21 @@ export function useRealtime() {
 
 export default function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const joinedLeaderboardsRef = useRef<Set<string>>(new Set());
   const userIdRef = useRef<string | null>(null);
 
   const socket = useMemo(() => getSocket(), []);
 
-  // Update the "user room" when auth changes.
   useEffect(() => {
     userIdRef.current = user?.id ?? null;
+    setSocketAuthToken(token ?? null);
 
-    // If we're already connected, (re-)join immediately.
-    if (socket && socket.connected && userIdRef.current) {
-      socket.emit('joinUser', userIdRef.current);
+    if (socket && socket.connected) {
+      socket.disconnect();
+      socket.connect();
     }
-  }, [socket, user?.id]);
+  }, [socket, token, user?.id]);
 
   useEffect(() => {
     // One-time connect + room rejoin.
@@ -87,4 +87,3 @@ export default function RealtimeProvider({ children }: { children: React.ReactNo
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }
-

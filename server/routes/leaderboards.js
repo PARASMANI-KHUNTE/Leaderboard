@@ -4,32 +4,32 @@ const Leaderboard = require('../models/LeaderboardCollection');
 const jwt = require('jsonwebtoken');
 
 const { auth } = require('../middleware/auth');
+const { validateLeaderboardCreate, validateObjectId, validateSearchQuery } = require('../middleware/validation');
 
 // Create a new leaderboard
-router.post('/create', auth, async (req, res) => {
+router.post('/create', auth, validateLeaderboardCreate, async (req, res) => {
     const { name } = req.body;
-    if (!name) return res.status(400).json({ message: 'Name is required' });
+    const sanitizedName = String(name).trim().slice(0, 100);
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
 
     try {
         const existing = await Leaderboard.findOne({
             $or: [
                 { slug },
-                { name: { $regex: new RegExp(`^${name}$`, 'i') } }
+                { name: { $eq: sanitizedName } }
             ]
         });
         if (existing) return res.status(400).json({ message: 'A leaderboard with this name already exists' });
 
         const leaderboard = new Leaderboard({
-            name,
+            name: sanitizedName,
             slug,
             createdBy: req.user.id
         });
 
         await leaderboard.save();
 
-        // Emit for real-time list update
         const io = req.app.get('socketio');
         io.emit('leaderboardCreated', leaderboard);
 
@@ -44,14 +44,15 @@ const LeaderboardEntry = require('../models/Leaderboard');
 // Get all leaderboards (with pagination and search)
 router.get('/', async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const search = req.query.search || '';
-        const status = req.query.status; // 'live' or 'maintenance'
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const search = String(req.query.search || '').trim().slice(0, 100);
+        const status = req.query.status;
 
         const query = {};
         if (search) {
-            query.name = { $regex: search, $options: 'i' };
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            query.name = { $regex: escapedSearch, $options: 'i' };
         }
         if (status === 'live') {
             query.isLive = true;

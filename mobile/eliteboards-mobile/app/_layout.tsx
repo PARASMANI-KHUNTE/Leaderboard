@@ -18,10 +18,15 @@ import * as SplashScreen from 'expo-splash-screen';
 
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.setOptions({
+  duration: 0,
+  fade: false,
+});
+
+// Keep the native splash as a plain handoff, then switch directly to the custom loader.
 SplashScreen.preventAutoHideAsync();
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.API_URL || 'https://leaderboard-backend-3pek.onrender.com';
+import { API_URL } from '../src/config/env';
 
 /* ─── Premium Navbar ─── */
 function Navbar({ unreadCount }: { unreadCount: number }) {

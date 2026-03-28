@@ -69,9 +69,7 @@ const Boards = () => {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`${API_URL}/api/leaderboards/${id}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/api/leaderboards/${id}`);
             fetchLeaderboards(pagination.currentPage);
             showAlert('Deleted', 'Leaderboard has been removed.');
         } catch (err) {
@@ -84,9 +82,7 @@ const Boards = () => {
         e.stopPropagation();
 
         try {
-            await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {});
             fetchLeaderboards(pagination.currentPage);
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to toggle status');

@@ -50,8 +50,7 @@ const Landing = () => {
         e.preventDefault();
         try {
             const res = await axios.post(`${API_URL}/api/leaderboards/create`,
-                { name: newName },
-                { headers: { Authorization: `Bearer ${user.token}` } }
+                { name: newName }
             );
             showAlert('Success', 'Leaderboard created! Share the link with students.');
             setLeaderboards([res.data, ...leaderboards]);
@@ -76,9 +75,7 @@ const Landing = () => {
         if (!confirmed) return;
 
         try {
-            await axios.delete(`${API_URL}/api/leaderboards/${id}`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.delete(`${API_URL}/api/leaderboards/${id}`);
             setLeaderboards(leaderboards.filter(lb => lb._id !== id));
             showAlert('Deleted', 'Leaderboard has been removed.');
         } catch (err) {
@@ -91,9 +88,7 @@ const Landing = () => {
         e.stopPropagation();
 
         try {
-            const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {}, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {});
             setLeaderboards(leaderboards.map(lb => lb._id === id ? { ...lb, isLive: res.data.isLive } : lb));
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to toggle status');

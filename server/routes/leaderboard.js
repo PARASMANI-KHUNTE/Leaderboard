@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 const { auth } = require('../middleware/auth');
+const { validateLeaderboardEntry, validateObjectId } = require('../middleware/validation');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -200,20 +201,18 @@ router.get('/:leaderboardId', async (req, res) => {
 });
 
 // Submit entry
-router.post('/submit', auth, async (req, res) => {
+router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
     const { name, cgpa, marks, leaderboardId } = req.body;
 
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        // Check if leaderboard is LIVE
         const Leaderboard = require('../models/LeaderboardCollection');
         const leaderboard = await Leaderboard.findById(leaderboardId);
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
         if (!leaderboard.isLive) return res.status(403).json({ message: 'This leaderboard is currently closed for submissions' });
 
-        // Check if user already submitted to THIS leaderboard
         const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId });
         if (existingEntry) {
             return res.status(400).json({ message: 'You have already made an entry in this leaderboard' });
@@ -223,7 +222,7 @@ router.post('/submit', auth, async (req, res) => {
         const entry = new LeaderboardEntry({
             leaderboardId,
             userId: user._id,
-            name,
+            name: String(name).trim().slice(0, 100),
             cgpa: parseFloat(cgpa),
             marks: (marks !== null && marks !== undefined) ? parseFloat(marks) : null,
             useMarks,
@@ -232,7 +231,6 @@ router.post('/submit', auth, async (req, res) => {
 
         await entry.save();
 
-        // Invalidate cached pages (version bump)
         const { getRedisClient } = require('../config/redis');
         const redisClient = await getRedisClient();
         if (redisClient) await invalidateEntriesCache(redisClient, leaderboardId);

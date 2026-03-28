@@ -19,13 +19,10 @@ const FeedbackForm = () => {
 
         setLoading(true);
         try {
-            await axios.post(`${API_URL}/api/feedback/submit`, { text }, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            });
+            await axios.post(`${API_URL}/api/feedback/submit`, { text });
             setText('');
             setIsOpen(false);
-            // In a real app, we'd use a nice toast here
-            showAlert('Success', 'Feedback sent! Appreciation incoming. 🚀');
+            showAlert('Success', 'Feedback sent! Appreciation incoming.');
         } catch (err) {
             showAlert('Error', 'Failed to send feedback');
         } finally {

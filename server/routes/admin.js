@@ -96,21 +96,48 @@ router.get('/users', auth, admin, async (req, res) => {
             };
         }
 
-        const users = await User.find(query).lean();
+        const users = await User.aggregate([
+            { $match: query },
+            {
+                $lookup: {
+                    from: 'leaderboardentries',
+                    localField: '_id',
+                    foreignField: 'userId',
+                    as: 'entries',
+                    pipeline: [{ $project: { _id: 1 } }],
+                },
+            },
+            {
+                $lookup: {
+                    from: 'reports',
+                    let: { entryIds: '$entries._id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $in: ['$entryId', '$$entryIds'] },
+                            },
+                        },
+                        { $count: 'count' },
+                    ],
+                    as: 'reportStats',
+                },
+            },
+            {
+                $addFields: {
+                    reportCount: {
+                        $ifNull: [{ $arrayElemAt: ['$reportStats.count', 0] }, 0],
+                    },
+                },
+            },
+            {
+                $project: {
+                    entries: 0,
+                    reportStats: 0,
+                },
+            },
+        ]);
 
-        // Enhance users with report counts
-        const enhancedUsers = await Promise.all(users.map(async (u) => {
-            // Find entries by this user
-            const userEntries = await LeaderboardEntry.find({ userId: u._id }).select('_id');
-            const entryIds = userEntries.map(e => e._id);
-
-            // Count reports for these entries
-            const reportCount = await Report.countDocuments({ entryId: { $in: entryIds } });
-
-            return { ...u, reportCount };
-        }));
-
-        res.json(enhancedUsers);
+        res.json(users);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -150,8 +177,8 @@ router.delete('/user/:id', auth, admin, async (req, res) => {
 
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        // 0. Collect affected leaderboardIds before deleting entries
-        const affected = await LeaderboardEntry.find({ userId: userObjectId }).select('leaderboardId').lean();
+        const affected = await LeaderboardEntry.find({ userId: userObjectId }).select('_id leaderboardId').lean();
+        const deletedEntryIds = affected.map((entry) => entry._id);
         const leaderboardIds = [...new Set(affected.map((e) => String(e.leaderboardId)))];
 
         // 1. Remove all entries by user
@@ -167,8 +194,12 @@ router.delete('/user/:id', auth, admin, async (req, res) => {
             { $pull: { dislikedBy: userObjectId } }
         );
 
-        // 3. Remove user's reports and feedback
-        await Report.deleteMany({ reporterId: userObjectId });
+        await Report.deleteMany({
+            $or: [
+                { reporterId: userObjectId },
+                ...(deletedEntryIds.length > 0 ? [{ entryId: { $in: deletedEntryIds } }] : []),
+            ],
+        });
         await Feedback.deleteMany({ userId: userObjectId });
 
         // 4. Delete user document

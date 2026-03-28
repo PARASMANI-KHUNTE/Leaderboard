@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { io } from 'socket.io-client';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import { API_URL } from '../config/env';
 
 const isExpoGo = typeof Constants !== 'undefined' && Constants.appOwnership === 'expo';
 let Notifications: any;
@@ -44,8 +45,8 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = 'eliteboards_token';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.API_URL || 'https://leaderboard-backend-3pek.onrender.com';
+const NOTIFS_KEY = 'eliteboards_notifs';
+const UNREAD_KEY = 'eliteboards_unread';
 
 export function useAuth() {
   const ctx = React.useContext(AuthContext);
@@ -94,31 +95,33 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  // Persistence: Load notifications
+  // Persistence: Load notifications from SecureStore
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       try {
-        const saved = await AsyncStorage.getItem(`notifs_${user.id}`);
-        const unread = await AsyncStorage.getItem(`unread_${user.id}`);
+        const saved = await SecureStore.getItemAsync(`${NOTIFS_KEY}_${user.id}`);
+        const unread = await SecureStore.getItemAsync(`${UNREAD_KEY}_${user.id}`);
         if (saved) setNotifications(JSON.parse(saved));
         if (unread) setUnreadCount(parseInt(unread));
       } catch (e) {}
     })();
   }, [user?.id]);
 
-  // Persistence: Save notifications
+  // Persistence: Save notifications to SecureStore
   useEffect(() => {
     if (!user?.id) return;
-    AsyncStorage.setItem(`notifs_${user.id}`, JSON.stringify(notifications));
-    AsyncStorage.setItem(`unread_${user.id}`, unreadCount.toString());
+    SecureStore.setItemAsync(`${NOTIFS_KEY}_${user.id}`, JSON.stringify(notifications)).catch(() => {});
+    SecureStore.setItemAsync(`${UNREAD_KEY}_${user.id}`, unreadCount.toString()).catch(() => {});
   }, [notifications, unreadCount, user?.id]);
 
   // Socket Listener for Notifications
   useEffect(() => {
     if (!user?.id) return;
 
-    const socket = io(API_URL);
+    const socket = io(API_URL, {
+      auth: token ? { token } : {},
+    });
     
     socket.on('connect', () => {
       socket.emit('joinUser', user.id);
@@ -154,7 +157,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
 
     return () => { socket.disconnect(); };
-  }, [user?.id]);
+  }, [token, user?.id]);
 
   // Request Permissions & Register Push
   useEffect(() => {
@@ -307,4 +310,3 @@ async function registerForPushNotificationsAsync() {
 
   return token;
 }
-
