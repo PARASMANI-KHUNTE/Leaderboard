@@ -115,7 +115,7 @@ const AppPromo = () => {
                             </motion.p>
                             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
                                 <a 
-                                    href="/EliteLeaderboardv0_3.apk" 
+                                    href="https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.0.0/EliteLeaderboard.apk" 
                                     download 
                                     className="px-10 py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-indigo-500/50 transition-all active:scale-95 flex items-center gap-3 group"
                                 >
@@ -332,7 +332,7 @@ const AppPromo = () => {
                                 Get Started
                             </Link>
                             <a 
-                                href="/EliteLeaderboardv0_3.apk" 
+                                href="https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.0.0/EliteLeaderboard.apk" 
                                 download 
                                 className="px-12 py-5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white font-black hover:border-indigo-500/50 transition-all flex items-center gap-3 uppercase tracking-widest text-sm"
                             >
@@ -364,7 +364,7 @@ const AppPromo = () => {
                         {/* Final Download Button */}
                         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30">
                             <a 
-                                href="/EliteLeaderboardv0_3.apk" 
+                                href="https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.0.0/EliteLeaderboard.apk" 
                                 download 
                                 className="px-12 py-6 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-3xl shadow-[0_0_60px_rgba(79,70,229,0.5)] active:scale-95 transition-all text-xl uppercase tracking-tighter flex items-center gap-4"
                             >

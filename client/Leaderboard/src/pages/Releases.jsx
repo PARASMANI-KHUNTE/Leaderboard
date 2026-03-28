@@ -4,34 +4,15 @@ import { Link } from 'react-router-dom';
 
 const versions = [
     {
-        version: 'v0.3',
-        tag: 'Latest',
-        date: 'March 26, 2026',
-        filename: 'EliteLeaderboardv0_3.apk',
-        description: 'New features and UI improvements. Optimized performance and fixed notification bugs.',
-        features: ['Redesigned Home Screen', 'Improved Push Notifications', 'Performance Optimizations'],
-        isLatest: true,
-        type: 'Stable'
-    },
-    {
-        version: 'v0.2',
-        tag: 'Previous',
-        date: 'March 26, 2026',
-        filename: 'EliteLeaderboardv0_2.apk',
-        description: 'Added support for real-time leaderboard updates and enhanced security.',
-        features: ['Real-time Updates', 'Enhanced Security', 'Bug Fixes'],
-        isLatest: false,
-        type: 'Stable'
-    },
-    {
         version: 'v0.1',
         tag: 'Initial',
-        date: 'March 25, 2026',
-        filename: 'EliteLeaderboardv0_1.apk',
-        description: 'Initial release of the EliteLeaderboard mobile app.',
-        features: ['User Authentication', 'Leaderboard View', 'Profile Management'],
-        isLatest: false,
-        type: 'Legacy'
+        date: 'March 28, 2026',
+        filename: 'EliteLeaderboard.apk',
+        downloadUrl: 'https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.0.0/EliteLeaderboard.apk',
+        description: 'EliteBoards v0.1 – Initial stable mobile release with real-time leaderboard sync and smart ranking.',
+        features: ['Real-time Sync', 'Smart Ranking Engine', 'Premium UI Design', 'Secure Authentication'],
+        isLatest: true,
+        type: 'Stable'
     }
 ];
 
@@ -78,7 +59,7 @@ const Releases = () => {
                                     <p className="text-slate-500 font-mono text-xs uppercase tracking-widest">{versions[0].date}</p>
                                 </div>
                                 <a 
-                                    href={`/${versions[0].filename}`} 
+                                    href={versions[0].downloadUrl} 
                                     download
                                     className="flex items-center justify-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/20 active:scale-95 transition-all group"
                                 >
@@ -169,7 +150,7 @@ const Releases = () => {
                                         <p className="text-[10px] text-slate-500 font-mono uppercase">{v.date}</p>
                                     </div>
                                     <a 
-                                        href={`/${v.filename}`} 
+                                        href={v.downloadUrl} 
                                         download
                                         className="p-3 bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 rounded-xl transition-all"
                                     >
