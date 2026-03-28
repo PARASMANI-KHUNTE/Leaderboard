@@ -43,6 +43,10 @@ function getAllowedOrigins() {
 }
 
 const allowedOrigins = getAllowedOrigins();
+let runtimeState = {
+    startedAt: null,
+    redisConnected: false,
+};
 
 function isAllowedOrigin(origin) {
     if (!origin) return true;
@@ -174,6 +178,10 @@ const createHybridKey = (req) => {
 
 const start = async () => {
     const redisClient = await initRedis();
+    runtimeState = {
+        startedAt: new Date().toISOString(),
+        redisConnected: !!redisClient,
+    };
 
     const rateLimitPrefix = process.env.RATE_LIMIT_PREFIX || 'rl:';
 
@@ -227,11 +235,31 @@ const start = async () => {
     app.use('/api/feedback', require('./routes/feedback'));
 
     // Health check endpoints
-    app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() }));
+    app.get('/health', async (req, res) => {
+        const { getRedisStatus } = require('./config/redis');
+        const dbReady = mongoose.connection.readyState === 1;
+        const redisStatus = getRedisStatus();
+        const hasRedisConfigured = redisStatus.enabled;
+        const redisReady = !hasRedisConfigured || redisStatus.connected;
+        const status = dbReady && redisReady ? 'UP' : 'DEGRADED';
+
+        res.status(status === 'UP' ? 200 : 503).json({
+            status,
+            timestamp: new Date().toISOString(),
+            uptimeSeconds: Math.round(process.uptime()),
+            startedAt: runtimeState.startedAt,
+            services: {
+                mongodb: dbReady ? 'UP' : 'DOWN',
+                redis: hasRedisConfigured
+                    ? (redisStatus.connected ? 'UP' : 'DOWN')
+                    : 'DISABLED',
+            },
+        });
+    });
     app.get('/test', (req, res) => res.status(200).json({ message: 'API is working correctly' }));
     app.get('/', (req, res) => res.status(200).send('API Server is running'));
 
-    // Connect to DB
+    // Connect to DB before accepting traffic.
     await connectDB();
 
     io.on('connection', (socket) => {
@@ -266,4 +294,7 @@ const start = async () => {
     server.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
 };
 
-start();
+start().catch((err) => {
+    console.error('[startup] fatal error:', err?.message || err);
+    process.exit(1);
+});

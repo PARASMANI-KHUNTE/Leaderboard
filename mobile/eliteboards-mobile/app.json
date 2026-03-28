@@ -40,6 +40,11 @@
       "favicon": "./assets/favicon.png"
     },
     "owner": "parasmani",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "plugins": [
       "expo-router",
       "expo-secure-store",

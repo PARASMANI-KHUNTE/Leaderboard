@@ -3,7 +3,7 @@ import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
-import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, ExternalLink, Github, Linkedin, Mail, Globe, Zap, Activity } from 'lucide-react';
+import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { io } from 'socket.io-client';
 
@@ -29,7 +29,9 @@ const Landing = () => {
         fetchLeaderboards();
 
         // Real-time listeners
-        const socket = io(API_URL);
+        const socket = io(API_URL, {
+            withCredentials: true,
+        });
 
         socket.on('leaderboardCreated', (newBoard) => {
             setLeaderboards(prev => [newBoard, ...prev].slice(0, 3));
@@ -53,7 +55,7 @@ const Landing = () => {
                 { name: newName }
             );
             showAlert('Success', 'Leaderboard created! Share the link with students.');
-            setLeaderboards([res.data, ...leaderboards]);
+            setLeaderboards((prev) => [res.data, ...prev]);
             setShowCreateModal(false);
             setNewName('');
         } catch (err) {
@@ -76,7 +78,7 @@ const Landing = () => {
 
         try {
             await axios.delete(`${API_URL}/api/leaderboards/${id}`);
-            setLeaderboards(leaderboards.filter(lb => lb._id !== id));
+            setLeaderboards((prev) => prev.filter(lb => lb._id !== id));
             showAlert('Deleted', 'Leaderboard has been removed.');
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to delete leaderboard');
@@ -89,7 +91,7 @@ const Landing = () => {
 
         try {
             const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {});
-            setLeaderboards(leaderboards.map(lb => lb._id === id ? { ...lb, isLive: res.data.isLive } : lb));
+            setLeaderboards((prev) => prev.map((lb) => lb._id === id ? { ...lb, isLive: res.data.isLive } : lb));
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to toggle status');
         }

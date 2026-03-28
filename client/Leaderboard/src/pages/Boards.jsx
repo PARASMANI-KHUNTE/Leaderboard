@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
 import { Trophy, ArrowRight, Users, Trash2, Power, PowerOff, Search, ChevronLeft, ChevronRight, Filter, LayoutGrid } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const Boards = () => {
     const { user } = useAuth();
@@ -20,7 +20,7 @@ const Boards = () => {
         limit: 9
     });
 
-    const fetchLeaderboards = async (page = 1) => {
+    const fetchLeaderboards = useCallback(async (page = 1) => {
         setLoading(true);
         try {
             const res = await axios.get(`${API_URL}/api/leaderboards`, {
@@ -39,7 +39,7 @@ const Boards = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [pagination.limit, search, showAlert, statusFilter]);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -47,7 +47,7 @@ const Boards = () => {
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [search, statusFilter]);
+    }, [fetchLeaderboards]);
 
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {

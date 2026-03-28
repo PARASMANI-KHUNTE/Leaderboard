@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import API_URL from '../config';
 import { useAuth, useModal } from '../App';
 import LeaderboardTable from '../components/LeaderboardTable';
 import EntryForm from '../components/EntryForm';
-import { Trophy, TrendingUp, Users, Share2, ArrowLeft, Eye, EyeOff, Heart, AlertTriangle, Flag, ChevronDown, ChevronUp, Trash2, Power, PowerOff } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { Trophy, TrendingUp, Users, Share2, ArrowLeft, EyeOff, AlertTriangle, ChevronDown, Trash2, Power, PowerOff } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const LeaderboardView = () => {
     const { slug } = useParams();
@@ -42,7 +41,7 @@ const LeaderboardView = () => {
 
             // Play sound
             const audio = new Audio('/success.mp3');
-            audio.play().catch(e => console.log('Audio play failed:', e));
+            audio.play().catch((error) => console.log('Audio play failed:', error));
 
             // Auto hide after 5 seconds
             setTimeout(() => setShowCelebration(false), 5000);
@@ -54,7 +53,9 @@ const LeaderboardView = () => {
     }, [editingEntry]);
 
     useEffect(() => {
-        const socket = io(API_URL);
+        const socket = io(API_URL, {
+            withCredentials: true,
+        });
         socketRef.current = socket;
 
         const fetchEntriesPage = async (cursorToUse, { reset }) => {
@@ -149,7 +150,7 @@ const LeaderboardView = () => {
             socket.off('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
             socket.disconnect();
         };
-    }, [slug]);
+    }, [slug, navigate, showAlert]);
 
     const handleToggleStatus = async () => {
         try {
@@ -179,12 +180,6 @@ const LeaderboardView = () => {
             showAlert('Error', err.response?.data?.message || 'Failed to delete leaderboard');
         }
     };
-
-    const handleCopyLink = () => {
-        navigator.clipboard.writeText(window.location.href);
-        showAlert('Copied', 'Link copied to clipboard!');
-    };
-
 
     const handleReport = async (e) => {
         e.preventDefault();
@@ -326,9 +321,9 @@ const LeaderboardView = () => {
                                     {leaderboard.isLive ? (
                                         user ? (
                                             <EntryForm
+                                                key={editingEntry?._id || 'new-entry'}
                                                 leaderboardId={leaderboard._id}
                                                 editingEntry={editingEntry}
-                                                entries={entries}
                                                 onCancel={() => {
                                                     setEditingEntry(null);
                                                     setIsFormOpen(false);

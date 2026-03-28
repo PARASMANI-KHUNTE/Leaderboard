@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Heart, MessageSquare, Flag, X, Trash2, ThumbsDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, Heart, MessageSquare, Flag, Trash2, ThumbsDown } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { useToast } from './Toast';
 import API_URL from '../config';
 
 const NotificationCenter = () => {

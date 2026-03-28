@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, MessageSquare, Bell, X, ThumbsDown } from 'lucide-react';
 
 const ToastContext = createContext();
@@ -12,7 +12,7 @@ export const ToastProvider = ({ children }) => {
     const playSound = useCallback(() => {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.volume = 0.4;
-        audio.play().catch(e => console.log('Sound blocked by browser policy'));
+        audio.play().catch(() => console.log('Sound blocked by browser policy'));
     }, []);
 
     const removeToast = useCallback((id) => {

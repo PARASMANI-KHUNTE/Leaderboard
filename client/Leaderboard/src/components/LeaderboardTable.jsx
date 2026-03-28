@@ -83,7 +83,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
 
         try {
             await axios.post(`${API_URL}/api/leaderboard/react/${id}`, {});
-        } catch (err) {
+        } catch {
             console.error('Failed to react');
         }
     };
@@ -110,7 +110,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
 
         try {
             await axios.post(`${API_URL}/api/leaderboard/dislike/${id}`, {});
-        } catch (err) {
+        } catch {
             console.error('Failed to dislike');
         }
     };

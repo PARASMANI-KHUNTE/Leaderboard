@@ -1,20 +1,31 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import API_URL from './config';
-import Landing from './pages/Landing';
-import LeaderboardView from './pages/LeaderboardView';
-import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import Releases from './pages/Releases';
-import AppPromo from './pages/AppPromo';
-import Boards from './pages/Boards';
-import Profile from './pages/Profile';
+
+// Lazy load pages for code splitting
+const Landing = lazy(() => import('./pages/Landing'));
+const LeaderboardView = lazy(() => import('./pages/LeaderboardView'));
+const Login = lazy(() => import('./pages/Login'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Releases = lazy(() => import('./pages/Releases'));
+const AppPromo = lazy(() => import('./pages/AppPromo'));
+const Boards = lazy(() => import('./pages/Boards'));
+const Profile = lazy(() => import('./pages/Profile'));
+
 import Navbar from './components/Navbar';
 import NotificationPanel from './components/NotificationPanel';
 import CustomModal from './components/CustomModal';
 import FeedbackForm from './components/FeedbackForm';
 import { ToastProvider } from './components/Toast';
+
+// Loading component for Suspense
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+    <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+    <div className="text-slate-500 font-mono text-xs tracking-widest animate-pulse uppercase">Loading Session...</div>
+  </div>
+);
 
 axios.defaults.withCredentials = true;
 
@@ -163,17 +174,19 @@ function App() {
               <Navbar />
               <NotificationPanel />
               <div className="flex-1">
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/login-success" element={<LoginSuccess />} />
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/lb/:slug" element={<LeaderboardView />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/releases" element={<Releases />} />
-                  <Route path="/app" element={<AppPromo />} />
-                  <Route path="/boards" element={<Boards />} />
-                  <Route path="/profile" element={<Profile />} />
-                </Routes>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/login-success" element={<LoginSuccess />} />
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/lb/:slug" element={<LeaderboardView />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/releases" element={<Releases />} />
+                    <Route path="/app" element={<AppPromo />} />
+                    <Route path="/boards" element={<Boards />} />
+                    <Route path="/profile" element={<Profile />} />
+                  </Routes>
+                </Suspense>
               </div>
               <FeedbackForm />
             </div>

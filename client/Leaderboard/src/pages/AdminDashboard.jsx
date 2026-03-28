@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
 import axios from 'axios';
 import API_URL from '../config';
-import { Shield, Flag, MessageSquare, UserX, UserCheck, Trash2, CheckCircle, Clock, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Flag, UserX, UserCheck, Trash2, CheckCircle, Clock, User } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const ProfileImage = ({ src, alt, size = "w-12 h-12" }) => {
     const [error, setError] = useState(false);
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
         if (tab) setActiveTab(tab);
     }, [searchParams]);
 
-    const fetchAdminData = async () => {
+    const fetchAdminData = useCallback(async () => {
         try {
             const [repRes, feedRes, userRes] = await Promise.all([
                 axios.get(`${API_URL}/api/admin/reports`),
@@ -57,18 +57,18 @@ const AdminDashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchQuery]);
 
     useEffect(() => {
         if (user?.isAdmin) fetchAdminData();
-    }, [user, searchQuery]);
+    }, [user, fetchAdminData]);
 
     const handleResolve = async (reportId, action) => {
         try {
             await axios.post(`${API_URL}/api/admin/resolve-report/${reportId}`, { action });
             setReports(prev => prev.filter(r => r._id !== reportId));
             showAlert('Status', 'Action completed');
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to resolve report');
         }
     };
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
             const res = await axios.post(`${API_URL}/api/admin/toggle-ban/${userId}`, {});
             showAlert('Success', res.data.message);
             fetchAdminData();
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to toggle ban');
         }
     };
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
         try {
             const res = await axios.patch(`${API_URL}/api/admin/feedback/${feedbackId}/toggle-read`, {});
             setFeedback(prev => prev.map(f => f._id === feedbackId ? res.data : f));
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to update feedback status');
         }
     };
@@ -100,7 +100,7 @@ const AdminDashboard = () => {
             await axios.delete(`${API_URL}/api/admin/feedback/${feedbackId}`);
             setFeedback(prev => prev.filter(f => f._id !== feedbackId));
             showAlert('Success', 'Feedback deleted');
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to delete feedback');
         }
     };
@@ -262,7 +262,7 @@ const AdminDashboard = () => {
                                                     await axios.delete(`${API_URL}/api/admin/user/${u._id}`);
                                                     setUsers(prev => prev.filter(user => user._id !== u._id));
                                                     showAlert('Success', 'User and all data purged.');
-                                                } catch (err) {
+                                                } catch {
                                                     showAlert('Error', 'Failed to delete user');
                                                 }
                                             }}

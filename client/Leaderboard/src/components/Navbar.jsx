@@ -1,23 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import API_URL from '../config';
-import { useAuth, useModal } from '../App';
-import { Trophy, LogOut, ShieldCheck, Bell, User, Trash2, Smartphone } from 'lucide-react';
-import FeedbackForm from './FeedbackForm';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../App';
+import { Trophy, ShieldCheck, User, Smartphone } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const Navbar = () => {
-    const { user, logout } = useAuth();
-    const { showAlert, showConfirm } = useModal();
-    const navigate = useNavigate();
+    const { user } = useAuth();
     const [imgError, setImgError] = useState(false);
-
-    // Logout logic removed from here as it's now in the Profile page
-    // Only keeping it if we really need it in Navbar, but the user requested a separate section.
-    // I'll keep the function define just in case the user wants a quick logout still?
-    // User said "handel... joined leaderboard, account delete and logout" in a separate section.
-    // So I will MOVE them to Profile and simplify Navbar.
 
     return (
         <nav className="border-b border-white/10 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">

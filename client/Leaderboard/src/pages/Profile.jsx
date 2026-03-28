@@ -4,22 +4,19 @@ import axios from 'axios';
 import API_URL from '../config';
 import { useAuth, useModal } from '../App';
 import { 
-    User, 
-    Trophy, 
-    LogOut, 
-    Trash2, 
-    Mail, 
-    ShieldCheck, 
-    ExternalLink,
+    User,
+    Trophy,
+    LogOut,
+    Trash2,
+    Mail,
+    ShieldCheck,
     ChevronRight,
     Search,
-    Clock,
     Zap,
     Heart,
-    Activity,
-    Smartphone
+    Activity
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 const Profile = () => {
     const { user, logout } = useAuth();
@@ -76,7 +73,7 @@ const Profile = () => {
             showAlert('Success', 'Account deleted successfully');
             logout();
             navigate('/login');
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to delete account');
         }
     };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, X, Star } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth, useModal } from '../App';
 import axios from 'axios';
 import API_URL from '../config';
@@ -23,7 +23,7 @@ const FeedbackForm = () => {
             setText('');
             setIsOpen(false);
             showAlert('Success', 'Feedback sent! Appreciation incoming.');
-        } catch (err) {
+        } catch {
             showAlert('Error', 'Failed to send feedback');
         } finally {
             setLoading(false);

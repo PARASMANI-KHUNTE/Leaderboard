@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, HelpCircle, X } from 'lucide-react';
 
 const CustomModal = ({ isOpen, type = 'alert', title, message, onConfirm, onCancel }) => {

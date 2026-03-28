@@ -42,10 +42,16 @@ async function retry(fn, { retries = 3, baseDelayMs = 100, timeoutMs = 5000, lab
 
 let cachedClient = null;
 let initPromise = null;
+let redisStatus = {
+    enabled: false,
+    connected: false,
+    mode: null,
+};
 
 async function initRedis() {
     const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
     const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    redisStatus.enabled = !!(upstashUrl && upstashToken) || !!process.env.REDIS_URL;
 
     // Prefer Upstash REST client if credentials exist.
     if (upstashUrl && upstashToken) {
@@ -55,9 +61,13 @@ async function initRedis() {
                 token: upstashToken.replace(/^"|"$/g, ''),
             });
             cachedClient = client;
+            redisStatus.connected = true;
+            redisStatus.mode = 'upstash-rest';
             console.log('[redis] upstash rest client ready');
             return cachedClient;
         } catch (err) {
+            redisStatus.connected = false;
+            redisStatus.mode = 'upstash-rest';
             console.warn('[redis] upstash unavailable, falling back:', err?.message || err);
             return null;
         }
@@ -85,8 +95,12 @@ async function initRedis() {
         await retry(() => client.connect(), { retries: 2, timeoutMs: 5000, label: 'connect' });
         console.log('[redis] connected');
         cachedClient = client;
+        redisStatus.connected = true;
+        redisStatus.mode = 'tcp';
         return cachedClient;
     } catch (err) {
+        redisStatus.connected = false;
+        redisStatus.mode = 'tcp';
         console.warn('[redis] unavailable, caching disabled:', err?.message || err);
         return null;
     }
@@ -97,6 +111,10 @@ async function getRedisClient() {
     if (!initPromise) initPromise = initRedis();
     cachedClient = await initPromise;
     return cachedClient;
+}
+
+function getRedisStatus() {
+    return { ...redisStatus };
 }
 
 function isUpstashClient(client) {
@@ -237,6 +255,7 @@ async function bumpVersion(redisClient, key) {
 module.exports = {
     initRedis,
     getRedisClient,
+    getRedisStatus,
 
     cacheGet,
     cacheSet,
@@ -247,4 +266,3 @@ module.exports = {
     getVersion,
     bumpVersion,
 };
-

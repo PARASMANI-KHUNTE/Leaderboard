@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-    Download, Smartphone, Zap, ShieldCheck, 
-    Star, ArrowRight, History, Heart, 
+    Download, Zap, ShieldCheck,
+    Star, ArrowRight, History, Heart,
     Users, Trophy, CheckCircle2 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';

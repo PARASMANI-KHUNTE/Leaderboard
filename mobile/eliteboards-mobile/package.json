@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "check-config": "expo config --type public",
+    "doctor": "npx expo-doctor"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import API_URL from '../config';
-import { useAuth, useModal } from '../App';
 import { Send, CheckCircle2, AlertCircle } from 'lucide-react';
 
-const EntryForm = ({ leaderboardId, editingEntry, entries, onCancel, onSuccess }) => {
-    const { user } = useAuth();
-    const { showAlert, showConfirm } = useModal();
+const EntryForm = ({ leaderboardId, editingEntry, onCancel, onSuccess }) => {
     const [name, setName] = useState(editingEntry?.name || '');
     const [cgpa, setCgpa] = useState(editingEntry?.cgpa || '');
     const [marks, setMarks] = useState(editingEntry?.marks || '');
@@ -15,14 +12,6 @@ const EntryForm = ({ leaderboardId, editingEntry, entries, onCancel, onSuccess }
 
     const parsedCgpa = parseFloat(cgpa);
     const isPromoted = parsedCgpa === 0;
-
-    useEffect(() => {
-        if (editingEntry) {
-            setName(editingEntry.name);
-            setCgpa(editingEntry.cgpa);
-            setMarks(editingEntry.marks || '');
-        }
-    }, [editingEntry]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
