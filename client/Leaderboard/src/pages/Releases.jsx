@@ -4,15 +4,26 @@ import { Link } from 'react-router-dom';
 
 const versions = [
     {
-        version: 'v0.1',
-        tag: 'Initial',
+        version: 'v1.1.0',
+        tag: 'OTA Ready',
         date: 'March 28, 2026',
-        filename: 'EliteLeaderboard.apk',
-        downloadUrl: 'https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.0.0/EliteLeaderboard.apk',
-        description: 'EliteBoards v0.1 – Initial stable mobile release with real-time leaderboard sync and smart ranking.',
-        features: ['Real-time Sync', 'Smart Ranking Engine', 'Premium UI Design', 'Secure Authentication'],
+        filename: 'EliteBoard.apk',
+        downloadUrl: 'https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/download/v1.1.0/EliteBoard.apk',
+        description: 'Major update featuring Ever-Green OTA (Over-The-Air) background updates and real-time synchronisation enhancements.',
+        features: ['OTA Update System', 'Real-time Heart Push Alerts', 'Optimized Rank Refresh', 'Performance Buffs'],
         isLatest: true,
         type: 'Stable'
+    },
+    {
+        version: 'v0.1',
+        tag: 'Initial',
+        date: 'March 25, 2026',
+        filename: 'EliteLeaderboard.apk',
+        downloadUrl: 'https://github.com/PARASMANI-KHUNTE/Leaderboard/releases/tag/v1.1.0', // Redirect to latest release page
+        description: 'Initial stable mobile release with real-time leaderboard sync and smart ranking.',
+        features: ['Real-time Sync', 'Smart Ranking Engine', 'Premium UI Design', 'Secure Authentication'],
+        isLatest: false,
+        type: 'Legacy'
     }
 ];
 
