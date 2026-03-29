@@ -141,10 +141,8 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
               style={styles.menuItem}
               onPress={async () => {
                 setMenuOpen(false);
-                // Attempt to derive the frontend URL from the API_URL for smart fallback
-                const webDocsUrl = API_URL.includes('localhost') 
-                  ? 'http://localhost:5173/docs' 
-                  : (API_URL.replace('backend', 'frontend').replace(':5000', ':5173') + '/docs');
+                // Use the official Render documentation link
+                const webDocsUrl = 'https://leaderboard-xgi1.onrender.com/docs';
                 await WebBrowser.openBrowserAsync(webDocsUrl);
               }}
             >
