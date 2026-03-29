@@ -11,6 +11,7 @@ import OfflineProvider from '../src/offline/OfflineProvider';
 import Loading from './loading'; // Import the custom loading screen
 import * as Updates from 'expo-updates';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
 import { io } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -135,6 +136,20 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
             >
               <Ionicons name="person-outline" size={18} color="#818cf8" />
               <Text style={styles.menuItemText}>View Profile</Text>
+            </Pressable>
+            <Pressable
+              style={styles.menuItem}
+              onPress={async () => {
+                setMenuOpen(false);
+                // Attempt to derive the frontend URL from the API_URL for smart fallback
+                const webDocsUrl = API_URL.includes('localhost') 
+                  ? 'http://localhost:5173/docs' 
+                  : (API_URL.replace('backend', 'frontend').replace(':5000', ':5173') + '/docs');
+                await WebBrowser.openBrowserAsync(webDocsUrl);
+              }}
+            >
+              <Ionicons name="book-outline" size={18} color="#94a3b8" />
+              <Text style={styles.menuItemText}>Documentation</Text>
             </Pressable>
             <Pressable
               style={styles.menuItem}

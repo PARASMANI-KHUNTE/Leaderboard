@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { Trophy, ShieldCheck, User, Smartphone } from 'lucide-react';
+import { Trophy, ShieldCheck, User, Smartphone, BookOpen } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const Navbar = () => {
@@ -40,6 +40,11 @@ const Navbar = () => {
                             <span className="hidden sm:inline">Download App</span>
                         </Link>
 
+                        <Link to="/docs" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors group">
+                            <BookOpen className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            <span className="hidden sm:inline">Docs</span>
+                        </Link>
+
                         {user ? (
                             <div className="flex items-center gap-4 border-l border-white/10 pl-4">
                                 {user.isAdmin && (
@@ -49,7 +54,7 @@ const Navbar = () => {
                                     </Link>
                                 )}
                                 <NotificationCenter />
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 pl-2">
                                     {(user.picture && !imgError) ? (
                                         <img
                                             src={user.picture}
@@ -78,7 +83,7 @@ const Navbar = () => {
                         ) : (
                             <Link
                                 to="/login"
-                                className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium text-sm"
+                                className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition-colors font-medium text-sm ml-2"
                             >
                                 Login
                             </Link>
