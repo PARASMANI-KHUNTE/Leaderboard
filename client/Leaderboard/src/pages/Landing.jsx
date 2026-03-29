@@ -14,6 +14,15 @@ const Landing = () => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newName, setNewName] = useState('');
+    const [entryMode, setEntryMode] = useState('manual');
+    const [fields, setFields] = useState({ cgpa: true, sgpa: false, marks: true });
+    const [ranking, setRanking] = useState({ mode: 'priority', primaryField: 'cgpa', secondaryField: 'marks' });
+    const [verification, setVerification] = useState({
+        level: 'none',
+        requireIdCard: false,
+        requireGradeCard: false,
+        autoAcceptOnIdentityMatch: true,
+    });
 
     useEffect(() => {
         const fetchLeaderboards = async () => {
@@ -52,12 +61,27 @@ const Landing = () => {
         e.preventDefault();
         try {
             const res = await axios.post(`${API_URL}/api/leaderboards/create`,
-                { name: newName }
+                {
+                    name: newName,
+                    entryMode,
+                    fields,
+                    ranking,
+                    verification,
+                }
             );
             showAlert('Success', 'Leaderboard created! Share the link with students.');
             setLeaderboards((prev) => [res.data, ...prev]);
             setShowCreateModal(false);
             setNewName('');
+            setEntryMode('manual');
+            setFields({ cgpa: true, sgpa: false, marks: true });
+            setRanking({ mode: 'priority', primaryField: 'cgpa', secondaryField: 'marks' });
+            setVerification({
+                level: 'none',
+                requireIdCard: false,
+                requireGradeCard: false,
+                autoAcceptOnIdentityMatch: true,
+            });
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to create leaderboard');
         }
@@ -362,6 +386,66 @@ const Landing = () => {
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
                                     required
                                 />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Mode</label>
+                                <select
+                                    value={entryMode}
+                                    onChange={(e) => setEntryMode(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                >
+                                    <option value="manual">Manual only</option>
+                                    <option value="upload">Upload only</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Enabled Fields</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['cgpa', 'sgpa', 'marks'].map((field) => (
+                                        <button
+                                            key={field}
+                                            type="button"
+                                            onClick={() => setFields((prev) => ({ ...prev, [field]: !prev[field] }))}
+                                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${fields[field] ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-white/5 border-white/10 text-slate-500'}`}
+                                        >
+                                            {field}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Primary Ranking Field</label>
+                                <select
+                                    value={ranking.primaryField}
+                                    onChange={(e) => setRanking((prev) => ({ ...prev, primaryField: e.target.value }))}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                >
+                                    <option value="cgpa">CGPA</option>
+                                    <option value="sgpa">SGPA</option>
+                                    <option value="marks">Marks</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Verification Level</label>
+                                <select
+                                    value={verification.level}
+                                    onChange={(e) => {
+                                        const level = e.target.value;
+                                        setVerification((prev) => ({
+                                            ...prev,
+                                            level,
+                                            requireIdCard: level !== 'none',
+                                            requireGradeCard: level !== 'none',
+                                        }));
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                >
+                                    <option value="none">No verification</option>
+                                    <option value="identity_match">Identity match required</option>
+                                    <option value="document_verification">Document verification required</option>
+                                    <option value="manual_approval">Manual approval required</option>
+                                </select>
                             </div>
                             <div className="flex gap-4">
                                 <button

@@ -2,8 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { User, Report, Feedback } = require('../models/User');
 const LeaderboardEntry = require('../models/Leaderboard');
+const Leaderboard = require('../models/LeaderboardCollection');
+const VerificationSubmission = require('../models/VerificationSubmission');
 const { auth, admin } = require('../middleware/auth');
 const mongoose = require('mongoose');
+const { buildEntryRankingPayload } = require('../utils/ranking');
 
 // Get all reports
 router.get('/reports', auth, admin, async (req, res) => {
@@ -138,6 +141,87 @@ router.get('/users', auth, admin, async (req, res) => {
         ]);
 
         res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.get('/verification-submissions', auth, admin, async (req, res) => {
+    try {
+        const submissions = await VerificationSubmission.find({
+            status: { $in: ['needs_review', 'rejected'] },
+        })
+            .populate('userId', 'displayName email profilePicture')
+            .populate('leaderboardId', 'name slug')
+            .sort({ createdAt: -1 })
+            .limit(100);
+
+        res.json(submissions);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post('/verification-submissions/:id/decision', auth, admin, async (req, res) => {
+    try {
+        const { decision } = req.body || {};
+        if (!['accepted', 'rejected'].includes(decision)) {
+            return res.status(400).json({ message: 'Decision must be accepted or rejected' });
+        }
+
+        const submission = await VerificationSubmission.findById(req.params.id);
+        if (!submission) return res.status(404).json({ message: 'Verification submission not found' });
+
+        submission.status = decision;
+
+        let entry = null;
+        if (decision === 'accepted' && !submission.resultingEntryId) {
+            const leaderboard = await Leaderboard.findById(submission.leaderboardId);
+            if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
+
+            const existingEntry = await LeaderboardEntry.findOne({
+                userId: submission.userId,
+                leaderboardId: submission.leaderboardId,
+            });
+
+            if (!existingEntry) {
+                const metrics = {
+                    cgpa: submission.extracted?.gradeCard?.cgpa ?? null,
+                    sgpa: submission.extracted?.gradeCard?.sgpa ?? null,
+                    marks: submission.extracted?.gradeCard?.marks ?? null,
+                };
+                const rankingPayload = buildEntryRankingPayload(leaderboard, metrics);
+                const user = await User.findById(submission.userId);
+
+                entry = await LeaderboardEntry.create({
+                    leaderboardId: submission.leaderboardId,
+                    userId: submission.userId,
+                    name: submission.extracted?.gradeCard?.fullName || user?.displayName || 'Student',
+                    cgpa: metrics.cgpa,
+                    sgpa: metrics.sgpa,
+                    marks: metrics.marks,
+                    userPicture: user?.profilePicture,
+                    verificationStatus: 'verified',
+                    verificationSubmissionId: submission._id,
+                    ...rankingPayload,
+                });
+
+                submission.resultingEntryId = entry._id;
+            }
+        }
+
+        await submission.save();
+
+        const { getRedisClient, bumpVersion } = require('../config/redis');
+        const redisClient = await getRedisClient();
+        if (redisClient) {
+            await bumpVersion(redisClient, `lb:${submission.leaderboardId}:version`);
+        }
+
+        const io = req.app.get('socketio');
+        io.to(`leaderboard:${submission.leaderboardId}`).emit('leaderboardChanged', { leaderboardId: submission.leaderboardId });
+
+        res.json({ submission, entry });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

@@ -12,6 +12,7 @@ const {
     validateObjectId,
 } = require('../middleware/validation');
 const { sendPushNotification } = require('../utils/push');
+const { getRankingFields, buildEntryRankingPayload, normalizeFieldValue } = require('../utils/ranking');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -58,6 +59,9 @@ async function invalidateEntriesCache(redisClient, leaderboardId) {
 router.get('/:leaderboardId', async (req, res) => {
     try {
         const { leaderboardId } = req.params;
+        const Leaderboard = require('../models/LeaderboardCollection');
+        const leaderboard = await Leaderboard.findById(leaderboardId).lean();
+        if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
 
         const rawLimit = req.query.limit ? Number(req.query.limit) : DEFAULT_LIMIT;
         const limit = Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
@@ -103,25 +107,27 @@ router.get('/:leaderboardId', async (req, res) => {
         const matchBase = {
             leaderboardId: new mongoose.Types.ObjectId(leaderboardId),
             userId: { $nin: bannedUserIds },
+            verificationStatus: { $nin: ['rejected'] },
         };
+
+        const rankingFields = getRankingFields(leaderboard);
+        const primaryField = rankingFields[0] === 'rankingScore' ? 'rankingScore' : (rankingFields[0] || 'cgpa');
+        const secondaryField = rankingFields[1] || 'marks';
+        const cursorPrimary = cursor?.primary;
+        const cursorSecondary = cursor?.secondary;
 
         const pipeline = [
             { $match: matchBase },
-            // Compute a single composite tie key so MongoDB can apply `$rank`
-            // (it requires `sortBy` to contain exactly one element).
-            // Ordering still behaves like `(cgpa desc, marks desc)` and ties are based
-            // on identical `(cgpa, marks)`.
             {
                 $addFields: {
                     tieScore: {
                         $add: [
-                            { $multiply: ['$cgpa', 1000000] },
-                            { $ifNull: ['$marks', 0] },
+                            { $multiply: [{ $ifNull: [`$${primaryField}`, 0] }, 1000000] },
+                            { $ifNull: [`$${secondaryField}`, 0] },
                         ],
                     },
                 },
             },
-            // Compute global, tie-aware rank using only `(cgpa, marks)` as the tie key.
             {
                 $setWindowFields: {
                     sortBy: { tieScore: -1 },
@@ -132,19 +138,18 @@ router.get('/:leaderboardId', async (req, res) => {
             },
         ];
 
-        // Cursor pagination (stable): order is cgpa desc, marks desc, _id desc.
-        if (cursorId && cursorCgpa !== undefined && cursorMarks !== undefined) {
+        if (cursorId && cursorPrimary !== undefined && cursorSecondary !== undefined) {
             pipeline.push({
                 $match: {
                     $or: [
-                        { cgpa: { $lt: cursorCgpa } },
+                        { [primaryField]: { $lt: cursorPrimary } },
                         {
-                            cgpa: cursorCgpa,
-                            marks: { $lt: cursorMarks },
+                            [primaryField]: cursorPrimary,
+                            [secondaryField]: { $lt: cursorSecondary },
                         },
                         {
-                            cgpa: cursorCgpa,
-                            marks: cursorMarks,
+                            [primaryField]: cursorPrimary,
+                            [secondaryField]: cursorSecondary,
                             _id: { $lt: cursorId },
                         },
                     ],
@@ -153,7 +158,7 @@ router.get('/:leaderboardId', async (req, res) => {
         }
 
         pipeline.push(
-            { $sort: { cgpa: -1, marks: -1, _id: -1 } },
+            { $sort: { [primaryField]: -1, [secondaryField]: -1, _id: -1 } },
             { $limit: limit + 1 },
             {
                 $project: {
@@ -163,8 +168,12 @@ router.get('/:leaderboardId', async (req, res) => {
                     userId: 1,
                     name: 1,
                     cgpa: 1,
+                    sgpa: 1,
                     marks: 1,
                     useMarks: 1,
+                    verificationStatus: 1,
+                    verificationSubmissionId: 1,
+                    rankingScore: 1,
                     userPicture: 1,
                     likedBy: 1,
                     dislikedBy: 1,
@@ -184,8 +193,8 @@ router.get('/:leaderboardId', async (req, res) => {
         if (hasMore) {
             const last = items[items.length - 1];
             nextCursor = encodeCursor({
-                cgpa: last.cgpa,
-                marks: last.marks,
+                primary: last[primaryField] ?? 0,
+                secondary: last[secondaryField] ?? 0,
                 id: last._id.toString(),
                 page: page + 1,
             });
@@ -196,6 +205,11 @@ router.get('/:leaderboardId', async (req, res) => {
             hasMore,
             nextCursor,
             page,
+            ranking: {
+                primaryField,
+                secondaryField,
+                mode: leaderboard.ranking?.mode || 'priority',
+            },
         };
 
         if (canCache) {
@@ -215,7 +229,7 @@ router.get('/:leaderboardId', async (req, res) => {
 
 // Submit entry
 router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
-    const { name, cgpa, marks, leaderboardId } = req.body;
+    const { name, cgpa, sgpa, marks, leaderboardId } = req.body;
 
     try {
         const user = await User.findById(req.user.id);
@@ -225,21 +239,36 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
         const leaderboard = await Leaderboard.findById(leaderboardId);
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
         if (!leaderboard.isLive) return res.status(403).json({ message: 'This leaderboard is currently closed for submissions' });
+        if (leaderboard.entryMode === 'upload') {
+            return res.status(400).json({ message: 'This leaderboard accepts document uploads only' });
+        }
 
         const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId });
         if (existingEntry) {
             return res.status(400).json({ message: 'You have already made an entry in this leaderboard' });
         }
 
-        const useMarks = parseFloat(cgpa) === 0;
+        const metrics = {
+            cgpa: cgpa !== undefined && cgpa !== null ? parseFloat(cgpa) : null,
+            sgpa: sgpa !== undefined && sgpa !== null ? parseFloat(sgpa) : null,
+            marks: marks !== null && marks !== undefined ? parseFloat(marks) : null,
+        };
+
+        if (leaderboard.fields?.cgpa === false) metrics.cgpa = null;
+        if (leaderboard.fields?.sgpa === false) metrics.sgpa = null;
+        if (leaderboard.fields?.marks === false) metrics.marks = null;
+
+        const rankingPayload = buildEntryRankingPayload(leaderboard, metrics);
         const entry = new LeaderboardEntry({
             leaderboardId,
             userId: user._id,
             name: String(name).trim().slice(0, 100),
-            cgpa: parseFloat(cgpa),
-            marks: (marks !== null && marks !== undefined) ? parseFloat(marks) : null,
-            useMarks,
-            userPicture: user.profilePicture
+            cgpa: metrics.cgpa,
+            sgpa: metrics.sgpa,
+            marks: metrics.marks,
+            userPicture: user.profilePicture,
+            verificationStatus: 'manual',
+            ...rankingPayload,
         });
 
         await entry.save();
@@ -259,7 +288,7 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
 
 // Edit entry
 router.put('/edit/:id', auth, validateObjectId(), validateLeaderboardEntryEdit, async (req, res) => {
-    const { name, cgpa, marks } = req.body;
+    const { name, cgpa, sgpa, marks } = req.body;
 
     try {
         const entry = await LeaderboardEntry.findById(req.params.id);
@@ -269,12 +298,23 @@ router.put('/edit/:id', auth, validateObjectId(), validateLeaderboardEntryEdit, 
             return res.status(403).json({ message: 'Not authorized to edit this entry' });
         }
 
+        const Leaderboard = require('../models/LeaderboardCollection');
+        const leaderboard = await Leaderboard.findById(entry.leaderboardId);
+        if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
+
         if (name !== undefined) entry.name = String(name).trim().slice(0, 100);
         if (cgpa !== undefined) entry.cgpa = parseFloat(cgpa);
+        if (sgpa !== undefined) entry.sgpa = parseFloat(sgpa);
         if (marks !== undefined) {
             entry.marks = (marks !== null) ? parseFloat(marks) : null;
         }
-        entry.useMarks = entry.cgpa === 0;
+        const rankingPayload = buildEntryRankingPayload(leaderboard, {
+            cgpa: entry.cgpa,
+            sgpa: entry.sgpa,
+            marks: entry.marks,
+        });
+        entry.useMarks = rankingPayload.useMarks;
+        entry.rankingScore = rankingPayload.rankingScore;
 
         await entry.save();
 

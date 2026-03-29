@@ -2,13 +2,20 @@ const express = require('express');
 const router = express.Router();
 const Leaderboard = require('../models/LeaderboardCollection');
 const jwt = require('jsonwebtoken');
+const { buildEntryRankingPayload } = require('../utils/ranking');
 
 const { auth } = require('../middleware/auth');
-const { validateLeaderboardCreate, validateObjectId, validateSearchQuery } = require('../middleware/validation');
+const { validateLeaderboardCreate, validateLeaderboardSettings, validateObjectId, validateSearchQuery } = require('../middleware/validation');
 
 // Create a new leaderboard
 router.post('/create', auth, validateLeaderboardCreate, async (req, res) => {
-    const { name } = req.body;
+    const {
+        name,
+        entryMode = 'manual',
+        fields = {},
+        ranking = {},
+        verification = {},
+    } = req.body;
     const sanitizedName = String(name).trim().slice(0, 100);
 
     const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
@@ -25,7 +32,11 @@ router.post('/create', auth, validateLeaderboardCreate, async (req, res) => {
         const leaderboard = new Leaderboard({
             name: sanitizedName,
             slug,
-            createdBy: req.user.id
+            createdBy: req.user.id,
+            entryMode,
+            fields,
+            ranking,
+            verification,
         });
 
         await leaderboard.save();
@@ -97,6 +108,37 @@ router.get('/:slug', async (req, res) => {
         res.json(leaderboard);
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+router.put('/:id/settings', auth, validateObjectId(), validateLeaderboardSettings, async (req, res) => {
+    try {
+        const leaderboard = await Leaderboard.findById(req.params.id);
+        if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
+
+        const isCreator = leaderboard.createdBy.toString() === req.user.id;
+        const isAdmin = req.user.isAdmin;
+        if (!isCreator && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to update this leaderboard' });
+        }
+
+        const updates = ['name', 'entryMode', 'fields', 'ranking', 'verification'];
+        for (const key of updates) {
+            if (req.body[key] !== undefined) {
+                leaderboard[key] = req.body[key];
+            }
+        }
+
+        if (req.body.name) {
+            const sanitizedName = String(req.body.name).trim().slice(0, 100);
+            leaderboard.name = sanitizedName;
+            leaderboard.slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        }
+
+        await leaderboard.save();
+        res.json(leaderboard);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
     }
 });
 

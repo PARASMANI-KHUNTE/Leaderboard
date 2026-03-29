@@ -11,13 +11,70 @@ const handleValidationErrors = (req, res, next) => {
     next();
 };
 
+const boardFieldsValidator = body('fields')
+    .optional()
+    .custom((value) => {
+        if (typeof value !== 'object' || value === null) {
+            throw new Error('Fields must be an object');
+        }
+        return true;
+    });
+
+const boardRankingValidator = body('ranking')
+    .optional()
+    .custom((value) => {
+        if (typeof value !== 'object' || value === null) {
+            throw new Error('Ranking must be an object');
+        }
+        return true;
+    });
+
+const boardVerificationValidator = body('verification')
+    .optional()
+    .custom((value) => {
+        if (typeof value !== 'object' || value === null) {
+            throw new Error('Verification must be an object');
+        }
+        return true;
+    });
+
 const validateLeaderboardCreate = [
     body('name')
         .trim()
         .notEmpty().withMessage('Name is required')
         .isLength({ min: 1, max: 100 }).withMessage('Name must be 1-100 characters')
         .escape(),
+    body('entryMode')
+        .optional()
+        .isIn(['manual', 'upload', 'hybrid']).withMessage('Invalid entry mode'),
+    boardFieldsValidator,
+    boardRankingValidator,
+    boardVerificationValidator,
     handleValidationErrors
+];
+
+const validateLeaderboardSettings = [
+    body('name')
+        .optional()
+        .trim()
+        .notEmpty().withMessage('Name cannot be empty')
+        .isLength({ min: 1, max: 100 }).withMessage('Name must be 1-100 characters')
+        .escape(),
+    body('entryMode')
+        .optional()
+        .isIn(['manual', 'upload', 'hybrid']).withMessage('Invalid entry mode'),
+    boardFieldsValidator,
+    boardRankingValidator,
+    boardVerificationValidator,
+    body().custom((value) => {
+        const editableKeys = ['name', 'entryMode', 'fields', 'ranking', 'verification'];
+        const hasAnyEditableKey = editableKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key));
+        if (!hasAnyEditableKey) {
+            throw new Error('At least one leaderboard setting is required');
+        }
+        return true;
+    }),
+    handleValidationErrors,
 ];
 
 const validateLeaderboardEntry = [
@@ -27,13 +84,27 @@ const validateLeaderboardEntry = [
         .isLength({ min: 1, max: 100 }).withMessage('Name must be 1-100 characters')
         .escape(),
     body('cgpa')
+        .optional({ nullable: true })
         .isFloat({ min: 0, max: 10 }).withMessage('CGPA must be between 0 and 10'),
+    body('sgpa')
+        .optional({ nullable: true })
+        .isFloat({ min: 0, max: 10 }).withMessage('SGPA must be between 0 and 10'),
     body('marks')
-        .optional()
+        .optional({ nullable: true })
         .isFloat({ min: 0, max: 700 }).withMessage('Marks must be between 0 and 700'),
     body('leaderboardId')
         .notEmpty().withMessage('Leaderboard ID is required')
         .isMongoId().withMessage('Invalid Leaderboard ID format'),
+    body().custom((value) => {
+        const hasAnyMetric =
+            value.cgpa !== undefined ||
+            value.sgpa !== undefined ||
+            value.marks !== undefined;
+        if (!hasAnyMetric) {
+            throw new Error('At least one ranking field is required');
+        }
+        return true;
+    }),
     handleValidationErrors
 ];
 
@@ -47,6 +118,9 @@ const validateLeaderboardEntryEdit = [
     body('cgpa')
         .optional()
         .isFloat({ min: 0, max: 10 }).withMessage('CGPA must be between 0 and 10'),
+    body('sgpa')
+        .optional()
+        .isFloat({ min: 0, max: 10 }).withMessage('SGPA must be between 0 and 10'),
     body('marks')
         .optional({ nullable: true })
         .isFloat({ min: 0, max: 700 }).withMessage('Marks must be between 0 and 700'),
@@ -54,6 +128,7 @@ const validateLeaderboardEntryEdit = [
         const hasEditableField =
             Object.prototype.hasOwnProperty.call(value, 'name') ||
             Object.prototype.hasOwnProperty.call(value, 'cgpa') ||
+            Object.prototype.hasOwnProperty.call(value, 'sgpa') ||
             Object.prototype.hasOwnProperty.call(value, 'marks');
         if (!hasEditableField) {
             throw new Error('At least one editable field is required');
@@ -99,6 +174,7 @@ const validateSearchQuery = [
 
 module.exports = {
     validateLeaderboardCreate,
+    validateLeaderboardSettings,
     validateLeaderboardEntry,
     validateLeaderboardEntryEdit,
     validateReportSubmit,

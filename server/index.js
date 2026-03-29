@@ -232,6 +232,7 @@ const start = async () => {
     app.use('/api/reports', require('./routes/reports'));
     app.use('/api/feedback', require('./routes/feedback'));
     app.use('/api/notifications', require('./routes/notifications'));
+    app.use('/api/verifications', require('./routes/verifications'));
 
     // Health check endpoints
     app.get('/health', async (req, res) => {

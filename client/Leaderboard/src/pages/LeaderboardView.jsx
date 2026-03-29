@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
@@ -6,7 +6,7 @@ import API_URL from '../config';
 import { useAuth, useModal } from '../App';
 import LeaderboardTable from '../components/LeaderboardTable';
 import EntryForm from '../components/EntryForm';
-import { Trophy, TrendingUp, Users, Share2, ArrowLeft, EyeOff, AlertTriangle, ChevronDown, Trash2, Power, PowerOff } from 'lucide-react';
+import { Trophy, TrendingUp, Users, Share2, ArrowLeft, EyeOff, AlertTriangle, Trash2, Power, PowerOff, Plus, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const LeaderboardView = () => {
@@ -31,22 +31,67 @@ const LeaderboardView = () => {
     const refetchTimerRef = useRef(null);
     const activeLeaderboardIdRef = useRef(null);
 
-    const handleSuccess = (subData) => {
-        setEditingEntry(null);
-        setIsFormOpen(false);
+    const fetchEntriesPage = useCallback(async (leaderboardId, cursorToUse, { reset } = { reset: true }) => {
+        if (!leaderboardId) return;
 
-        // Only celebrate for "Promoted" students (exactly 0 CGPA)
-        if (subData && subData.cgpa === 0) {
+        try {
+            if (reset) setLoading(true);
+            else setLoadingMore(true);
+
+            const params = { limit: PAGE_LIMIT };
+            if (cursorToUse) params.cursor = cursorToUse;
+
+            const res = await axios.get(`${API_URL}/api/leaderboard/${leaderboardId}`, { params });
+            const { items, nextCursor, hasMore: more } = res.data;
+
+            if (reset) setEntries(items);
+            else setEntries((prev) => [...prev, ...items]);
+
+            setPageCursor(nextCursor);
+            setHasMore(more);
+        } catch (err) {
+            console.error('Error loading entries:', err);
+        } finally {
+            if (reset) setLoading(false);
+            else setLoadingMore(false);
+        }
+    }, []);
+
+    const refreshLeaderboard = useCallback(async () => {
+        if (!activeLeaderboardIdRef.current) return;
+        await fetchEntriesPage(activeLeaderboardIdRef.current, null, { reset: true });
+    }, [fetchEntriesPage]);
+
+    const handleSuccess = useCallback(async (result) => {
+        const status = result?.status;
+
+        if (status === 'accepted') {
+            setEditingEntry(null);
+            setIsFormOpen(false);
+            await refreshLeaderboard();
+        }
+
+        const celebratoryCgpa =
+            result?.payload?.cgpa ??
+            result?.payload?.entry?.cgpa ??
+            result?.payload?.submission?.extracted?.gradeCard?.cgpa;
+
+        if (status === 'accepted' && celebratoryCgpa === 0) {
             setShowCelebration(true);
 
-            // Play sound
             const audio = new Audio('/success.mp3');
             audio.play().catch((error) => console.log('Audio play failed:', error));
 
-            // Auto hide after 5 seconds
             setTimeout(() => setShowCelebration(false), 5000);
         }
-    };
+
+        if (result?.type === 'upload' && status !== 'accepted' && result?.reasons?.length) {
+            await showAlert(
+                status === 'needs_review' ? 'Needs Review' : 'Verification Failed',
+                result.reasons.slice(0, 3).join(' ')
+            );
+        }
+    }, [refreshLeaderboard, showAlert]);
 
     useEffect(() => {
         if (editingEntry) setIsFormOpen(true);
@@ -58,40 +103,10 @@ const LeaderboardView = () => {
         });
         socketRef.current = socket;
 
-        const fetchEntriesPage = async (cursorToUse, { reset }) => {
-            const activeLeaderboardId = activeLeaderboardIdRef.current;
-            if (!activeLeaderboardId) return;
-
-            try {
-                if (reset) setLoading(true);
-                else setLoadingMore(true);
-
-                const params = { limit: PAGE_LIMIT };
-                if (cursorToUse) params.cursor = cursorToUse;
-
-                const res = await axios.get(`${API_URL}/api/leaderboard/${activeLeaderboardId}`, { params });
-                const { items, nextCursor, hasMore } = res.data;
-
-                if (reset) {
-                    setEntries(items);
-                } else {
-                    setEntries((prev) => [...prev, ...items]);
-                }
-
-                setPageCursor(nextCursor);
-                setHasMore(hasMore);
-            } catch (err) {
-                console.error('Error loading entries:', err);
-            } finally {
-                if (reset) setLoading(false);
-                else setLoadingMore(false);
-            }
-        };
-
         const scheduleRefetch = () => {
             if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
             refetchTimerRef.current = setTimeout(() => {
-                fetchEntriesPage(null, { reset: true });
+                fetchEntriesPage(activeLeaderboardIdRef.current, null, { reset: true });
             }, 500);
         };
 
@@ -134,7 +149,7 @@ const LeaderboardView = () => {
                 // Initial entries load (page 1)
                 setPageCursor(null);
                 setHasMore(false);
-                await fetchEntriesPage(null, { reset: true });
+                await fetchEntriesPage(lbRes.data._id, null, { reset: true });
             } catch (err) {
                 console.error('Error:', err);
                 setLoading(false);
@@ -150,7 +165,7 @@ const LeaderboardView = () => {
             socket.off('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
             socket.disconnect();
         };
-    }, [slug, navigate, showAlert]);
+    }, [slug, navigate, showAlert, fetchEntriesPage]);
 
     const handleToggleStatus = async () => {
         try {
@@ -290,64 +305,50 @@ const LeaderboardView = () => {
                 <p className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto italic">
                     Live updates of student performance
                 </p>
+                {leaderboard.isLive && (
+                    <div className="pt-2">
+                        <button
+                            onClick={() => setIsFormOpen(true)}
+                            className="inline-flex items-center gap-3 rounded-2xl border border-indigo-500/30 bg-indigo-600 px-6 py-3 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-500 active:scale-95"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Submit Entry
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="glass p-6 space-y-6 sticky top-24 overflow-hidden">
-                        <button
-                            onClick={() => setIsFormOpen(!isFormOpen)}
-                            className="w-full flex items-center justify-between group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <TrendingUp className={`transition-colors ${isFormOpen ? 'text-indigo-400' : 'text-slate-500 group-hover:text-indigo-400'}`} />
-                                <h2 className={`text-xl font-bold font-mono uppercase transition-colors ${isFormOpen ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
-                                    {editingEntry ? 'Edit Entry' : 'Submit Entry'}
-                                </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-8 items-start">
+                <div className="space-y-6">
+                    <div className="glass p-6 space-y-4 sticky top-24 overflow-hidden">
+                        <div className="flex items-center gap-3">
+                            <TrendingUp className="text-indigo-400" />
+                            <div>
+                                <h2 className="text-xl font-bold font-mono uppercase text-white">Board Snapshot</h2>
+                                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold">Rankings update live</p>
                             </div>
-                            <div className={`p-1.5 rounded-lg bg-white/5 group-hover:bg-white/10 transition-all ${isFormOpen ? 'rotate-180 text-indigo-400' : 'text-slate-500'}`}>
-                                <ChevronDown className="w-4 h-4" />
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Entry Mode</p>
+                            <p className="mt-2 text-sm font-bold text-slate-200 uppercase">{leaderboard.entryMode}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Verification</p>
+                            <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+                                {leaderboard.entryMode === 'manual'
+                                    ? 'This board accepts direct score entry.'
+                                    : 'Upload flow checks your academic documents before ranking.'}
+                            </p>
+                        </div>
+                        {!leaderboard.isLive && (
+                            <div className="text-center py-6 space-y-3 bg-red-500/5 rounded-2xl border border-red-500/10">
+                                <EyeOff className="w-10 h-10 mx-auto text-red-500/50" />
+                                <div className="space-y-1">
+                                    <p className="text-red-400 font-bold uppercase tracking-widest">Submissions Closed</p>
+                                    <p className="text-slate-500 text-xs">This board is currently under maintenance.</p>
+                                </div>
                             </div>
-                        </button>
-
-                        <AnimatePresence>
-                            {isFormOpen && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                                    animate={{ height: 'auto', opacity: 1, marginTop: 24 }}
-                                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                    className="space-y-6 pt-6 border-t border-white/10"
-                                >
-                                    {leaderboard.isLive ? (
-                                        user ? (
-                                            <EntryForm
-                                                key={editingEntry?._id || 'new-entry'}
-                                                leaderboardId={leaderboard._id}
-                                                editingEntry={editingEntry}
-                                                onCancel={() => {
-                                                    setEditingEntry(null);
-                                                    setIsFormOpen(false);
-                                                }}
-                                                onSuccess={handleSuccess}
-                                            />
-                                        ) : (
-                                            <div className="text-center py-8 space-y-4 font-mono">
-                                                <p className="text-slate-400 text-sm">Please login to participate.</p>
-                                                <a href="/login" className="inline-block px-6 py-2 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-colors">LOGIN</a>
-                                            </div>
-                                        )
-                                    ) : (
-                                        <div className="text-center py-12 space-y-4 bg-red-500/5 rounded-2xl border border-red-500/10">
-                                            <EyeOff className="w-12 h-12 mx-auto text-red-500/50" />
-                                            <div className="space-y-1">
-                                                <p className="text-red-400 font-bold uppercase tracking-widest">Submissions Closed</p>
-                                                <p className="text-slate-500 text-xs">This board is currently under maintenance.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -364,11 +365,12 @@ const LeaderboardView = () => {
                     </div>
                 </div>
 
-                <div className="lg:col-span-2 space-y-4">
+                <div className="space-y-4 min-w-0">
                     <div ref={tableRef} className="glass overflow-hidden shadow-2xl border-indigo-500/10">
                         <LeaderboardTable
                             entries={entries}
                             loading={loading}
+                            leaderboard={leaderboard}
                             leaderboardCreatorId={leaderboard?.createdBy}
                             onEdit={(entry) => setEditingEntry(entry)}
                             onDelete={handleDelete}
@@ -389,6 +391,82 @@ const LeaderboardView = () => {
                     )}
                 </div>
             </div>
+
+            <AnimatePresence>
+                {isFormOpen && (
+                    <div className="fixed inset-0 z-[2200] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-950/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+                            className="w-full sm:max-w-2xl max-h-[92vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border border-white/10 bg-slate-950 shadow-2xl shadow-indigo-950/50"
+                        >
+                            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Submit Entry</p>
+                                    <h2 className="mt-1 text-xl sm:text-2xl font-black uppercase text-white font-mono">
+                                        {editingEntry ? 'Edit Submission' : leaderboard.name}
+                                    </h2>
+                                    <p className="mt-2 text-sm text-slate-400">
+                                        {leaderboard.entryMode === 'manual'
+                                            ? 'Fill in your academic details and submit.'
+                                            : 'Upload your ID card and grade card. We will extract, compare, and verify before ranking.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setEditingEntry(null);
+                                        setIsFormOpen(false);
+                                    }}
+                                    className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="max-h-[calc(92vh-88px)] overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+                                {leaderboard.isLive ? (
+                                    user ? (
+                                        <EntryForm
+                                            key={editingEntry?._id || 'new-entry'}
+                                            leaderboard={leaderboard}
+                                            editingEntry={editingEntry}
+                                            onCancel={() => {
+                                                setEditingEntry(null);
+                                                setIsFormOpen(false);
+                                            }}
+                                            onSuccess={handleSuccess}
+                                        />
+                                    ) : (
+                                        <div className="text-center py-10 space-y-4 font-mono">
+                                            <p className="text-slate-400 text-sm">Please login to participate.</p>
+                                            <a href="/login" className="inline-block px-6 py-3 bg-indigo-600 rounded-xl font-bold hover:bg-indigo-500 transition-colors">LOGIN</a>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="text-center py-12 space-y-4 bg-red-500/5 rounded-2xl border border-red-500/10">
+                                        <EyeOff className="w-12 h-12 mx-auto text-red-500/50" />
+                                        <div className="space-y-1">
+                                            <p className="text-red-400 font-bold uppercase tracking-widest">Submissions Closed</p>
+                                            <p className="text-slate-500 text-xs">This board is currently under maintenance.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {leaderboard.isLive && (
+                <button
+                    onClick={() => setIsFormOpen(true)}
+                    className="fixed bottom-6 right-6 z-[2100] inline-flex items-center gap-3 rounded-full border border-indigo-400/20 bg-indigo-600 px-5 py-4 text-sm font-black uppercase tracking-widest text-white shadow-2xl shadow-indigo-500/30 transition-all hover:bg-indigo-500 active:scale-95"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Submit Entry</span>
+                </button>
+            )}
 
             {/* Celebration Overlay */}
             <AnimatePresence>

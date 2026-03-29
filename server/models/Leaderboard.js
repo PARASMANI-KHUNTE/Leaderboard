@@ -17,18 +17,39 @@ const LeaderboardSchema = new mongoose.Schema({
     },
     cgpa: {
         type: Number,
-        required: true,
         min: 0,
         max: 10,
+        default: null,
+    },
+    sgpa: {
+        type: Number,
+        min: 0,
+        max: 10,
+        default: null,
     },
     marks: {
         type: Number,
         min: 0,
         max: 700,
+        default: null,
     },
     useMarks: {
         type: Boolean,
         default: false,
+    },
+    verificationStatus: {
+        type: String,
+        enum: ['manual', 'pending', 'verified', 'needs_review', 'rejected'],
+        default: 'manual',
+    },
+    verificationSubmissionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'VerificationSubmission',
+        default: null,
+    },
+    rankingScore: {
+        type: Number,
+        default: 0,
     },
     userPicture: String,
     likedBy: [{
