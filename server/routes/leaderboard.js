@@ -58,15 +58,23 @@ async function invalidateEntriesCache(redisClient, leaderboardId) {
 router.get('/:leaderboardId', async (req, res) => {
     try {
         const { leaderboardId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(leaderboardId)) {
+            return res.status(400).json({ message: 'Invalid leaderboard ID format' });
+        }
 
         const rawLimit = req.query.limit ? Number(req.query.limit) : DEFAULT_LIMIT;
-        const limit = Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
+        const limit = Number.isFinite(rawLimit)
+            ? Math.min(Math.max(Math.floor(rawLimit), 1), MAX_LIMIT)
+            : DEFAULT_LIMIT;
         const cursor = decodeCursor(req.query.cursor);
 
-        const page = cursor?.page ? Number(cursor.page) : 1;
+        const pageValue = cursor?.page ? Number(cursor.page) : 1;
+        const page = Number.isFinite(pageValue) && pageValue > 0 ? Math.floor(pageValue) : 1;
         const cursorCgpa = cursor?.cgpa;
         const cursorMarks = cursor?.marks;
-        const cursorId = cursor?.id ? new mongoose.Types.ObjectId(cursor.id) : null;
+        const cursorId = cursor?.id && mongoose.Types.ObjectId.isValid(cursor.id)
+            ? new mongoose.Types.ObjectId(cursor.id)
+            : null;
 
         // First find all banned user IDs (to exclude them from results + rank calc)
         const bannedUsers = await User.find({ isBanned: true }).select('_id');
@@ -133,7 +141,11 @@ router.get('/:leaderboardId', async (req, res) => {
         ];
 
         // Cursor pagination (stable): order is cgpa desc, marks desc, _id desc.
-        if (cursorId && cursorCgpa !== undefined && cursorMarks !== undefined) {
+        if (
+            cursorId &&
+            Number.isFinite(Number(cursorCgpa)) &&
+            (cursorMarks === null || Number.isFinite(Number(cursorMarks)))
+        ) {
             pipeline.push({
                 $match: {
                     $or: [
