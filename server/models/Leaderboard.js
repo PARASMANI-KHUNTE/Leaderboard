@@ -41,4 +41,10 @@ const LeaderboardSchema = new mongoose.Schema({
     }]
 }, { timestamps: true });
 
+// Prevent duplicate entries by the same user in a leaderboard (race condition defense)
+LeaderboardSchema.index({ leaderboardId: 1, userId: 1 }, { unique: true });
+
+// Compound index for fast ranking and cursor-based pagination
+LeaderboardSchema.index({ leaderboardId: 1, cgpa: -1, marks: -1, _id: -1 });
+
 module.exports = mongoose.model('LeaderboardEntry', LeaderboardSchema);

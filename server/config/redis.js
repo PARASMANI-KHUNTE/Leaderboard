@@ -25,11 +25,31 @@ function withTimeout(promise, ms, label) {
     ]);
 }
 
-async function retry(fn, { retries = 3, baseDelayMs = 100, timeoutMs = 5000, label } = {}) {
+let consecutiveFailures = 0;
+let circuitBreakerOpenUntil = 0;
+
+function isCircuitOpen() {
+    return Date.now() < circuitBreakerOpenUntil;
+}
+
+function recordSuccess() {
+    consecutiveFailures = 0;
+}
+
+function recordFailure(label) {
+    consecutiveFailures++;
+    if (consecutiveFailures >= 3 && !isCircuitOpen()) {
+        circuitBreakerOpenUntil = Date.now() + 30000;
+        console.warn(`[redis] Circuit breaker open for 30s after 3 consecutive failures (last: ${label || 'operation'})`);
+    }
+}
+
+async function retry(fn, { retries = 0, baseDelayMs = 50, timeoutMs = 800, label } = {}) {
     let lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
             const result = await withTimeout(fn(), timeoutMs, label);
+            recordSuccess();
             return result;
         } catch (err) {
             lastErr = err;
@@ -37,6 +57,7 @@ async function retry(fn, { retries = 3, baseDelayMs = 100, timeoutMs = 5000, lab
             await sleep(baseDelayMs * (attempt + 1));
         }
     }
+    recordFailure(label);
     throw lastErr;
 }
 
@@ -60,29 +81,39 @@ async function initRedis() {
                 url: upstashUrl.replace(/^"|"$/g, ''), // tolerate quoted env vars
                 token: upstashToken.replace(/^"|"$/g, ''),
             });
+            // Actively probe with a strict 1000ms timeout
+            await withTimeout(client.ping(), 1000, 'upstash-probe');
             cachedClient = client;
             redisStatus.connected = true;
             redisStatus.mode = 'upstash-rest';
-            console.log('[redis] upstash rest client ready');
+            console.log('[redis] upstash rest client ready and verified');
             return cachedClient;
         } catch (err) {
             redisStatus.connected = false;
             redisStatus.mode = 'upstash-rest';
-            console.warn('[redis] upstash unavailable, falling back:', err?.message || err);
-            return null;
+            console.warn('[redis] upstash endpoint unreachable (falling back to database):', err?.message || err);
+            cachedClient = null;
         }
     }
 
     // Fallback to local / Redis Cloud (TCP).
+    // If no Redis URL is explicitly provided or in test environment, skip connect attempt
+    if (!process.env.REDIS_URL || process.env.NODE_ENV === 'test') {
+        redisStatus.connected = false;
+        redisStatus.mode = null;
+        return null;
+    }
+
     const url = getLocalRedisUrl();
+    let client = null;
     try {
-        const client = createClient({
+        client = createClient({
             url,
             socket: {
-                connectTimeout: 5000,
+                connectTimeout: 1500,
                 reconnectStrategy: (retries) => {
-                    if (retries > 5) return false;
-                    return Math.min(retries * 100, 3000);
+                    if (retries > 2) return false;
+                    return Math.min(retries * 100, 1000);
                 },
             },
         });
@@ -92,13 +123,16 @@ async function initRedis() {
         });
 
         // Connection itself can hang; guard it.
-        await retry(() => client.connect(), { retries: 2, timeoutMs: 5000, label: 'connect' });
-        console.log('[redis] connected');
+        await retry(() => client.connect(), { retries: 1, timeoutMs: 1500, label: 'connect' });
+        console.log('[redis] connected via TCP');
         cachedClient = client;
         redisStatus.connected = true;
         redisStatus.mode = 'tcp';
         return cachedClient;
     } catch (err) {
+        if (client) {
+            try { await client.disconnect(); } catch (_) {}
+        }
         redisStatus.connected = false;
         redisStatus.mode = 'tcp';
         console.warn('[redis] unavailable, caching disabled:', err?.message || err);
@@ -107,6 +141,7 @@ async function initRedis() {
 }
 
 async function getRedisClient() {
+    if (isCircuitOpen()) return null;
     if (cachedClient) return cachedClient;
     if (!initPromise) initPromise = initRedis();
     cachedClient = await initPromise;
@@ -231,25 +266,25 @@ async function cacheSetNX(redisClient, key, value, ttl = 60) {
 
 async function getVersion(redisClient, key) {
     if (!redisClient) return 1;
-    const v = await cacheGet(redisClient, key);
-    // cacheGet expects JSON; for version keys we store raw numbers as strings.
-    if (typeof v === 'number') return v;
-    if (typeof v === 'string') return Number(v) || 1;
-    const raw = await (async () => {
-        try {
-            return await retry(() => redisClient.get(key), { retries: 2, timeoutMs: 5000, label: `version:${key}` });
-        } catch {
-            return null;
-        }
-    })();
-    const num = raw !== null ? Number(raw) : NaN;
-    return Number.isFinite(num) ? num : 1;
+    try {
+        const v = await cacheGet(redisClient, key);
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') return Number(v) || 1;
+        return 1;
+    } catch {
+        return 1;
+    }
 }
 
 async function bumpVersion(redisClient, key) {
-    if (!redisClient) return;
-    // Version keys should not expire; they act as stable invalidation tokens.
-    await retry(() => redisClient.incr(key), { retries: 2, timeoutMs: 5000, label: `bumpVersion:${key}` });
+    if (!redisClient) return 1;
+    try {
+        // Version keys act as stable invalidation tokens.
+        const next = await retry(() => redisClient.incr(key), { retries: 0, timeoutMs: 800, label: `bumpVersion:${key}` });
+        return next || 1;
+    } catch {
+        return 1;
+    }
 }
 
 module.exports = {

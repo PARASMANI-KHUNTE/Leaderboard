@@ -45,8 +45,7 @@
     "owner": "parasmani",
     "platforms": [
       "ios",
-      "android",
-      "web"
+      "android"
     ],
     "plugins": [
       "expo-router",

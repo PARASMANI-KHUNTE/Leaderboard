@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
 import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { io } from 'socket.io-client';
+import { getSocket } from '../utils/socketSingleton';
 
 const Landing = () => {
     const { user } = useAuth();
@@ -28,24 +28,30 @@ const Landing = () => {
         };
         fetchLeaderboards();
 
-        // Real-time listeners
-        const socket = io(API_URL, {
-            withCredentials: true,
-        });
+        // Real-time listeners via shared socket singleton
+        const socket = getSocket();
 
-        socket.on('leaderboardCreated', (newBoard) => {
+        const handleCreated = (newBoard) => {
             setLeaderboards(prev => [newBoard, ...prev].slice(0, 3));
-        });
+        };
 
-        socket.on('leaderboardDeleted', (deletedId) => {
+        const handleDeleted = (deletedId) => {
             setLeaderboards(prev => prev.filter(lb => lb._id !== deletedId));
-        });
+        };
 
-        socket.on('leaderboardStatusUpdated', ({ id, isLive }) => {
+        const handleStatusUpdated = ({ id, isLive }) => {
             setLeaderboards(prev => prev.map(lb => lb._id === id ? { ...lb, isLive } : lb));
-        });
+        };
 
-        return () => socket.disconnect();
+        socket.on('leaderboardCreated', handleCreated);
+        socket.on('leaderboardDeleted', handleDeleted);
+        socket.on('leaderboardStatusUpdated', handleStatusUpdated);
+
+        return () => {
+            socket.off('leaderboardCreated', handleCreated);
+            socket.off('leaderboardDeleted', handleDeleted);
+            socket.off('leaderboardStatusUpdated', handleStatusUpdated);
+        };
     }, []);
 
     const handleCreate = async (e) => {

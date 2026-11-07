@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const passport = require('passport');
 const session = require('express-session');
 const MongoStore = require('connect-mongo').default || require('connect-mongo');
@@ -120,6 +121,9 @@ if (isProduction) {
     });
 }
 
+// Enable Gzip/Brotli compression for fast HTTP responses
+app.use(compression());
+
 // CORS configuration
 const corsOptions = {
     origin: (origin, cb) => {
@@ -180,6 +184,20 @@ const start = async () => {
         startedAt: new Date().toISOString(),
         redisConnected: !!redisClient,
     };
+
+    // Configure Socket.IO Redis Adapter for multi-node horizontal scaling
+    if (redisClient && typeof redisClient.duplicate === 'function') {
+        try {
+            const { createAdapter } = require('@socket.io/redis-adapter');
+            const pubClient = redisClient.duplicate();
+            const subClient = redisClient.duplicate();
+            await Promise.all([pubClient.connect(), subClient.connect()]);
+            io.adapter(createAdapter(pubClient, subClient));
+            console.log('[socket.io] redis adapter enabled for multi-node clustering');
+        } catch (adapterErr) {
+            console.warn('[socket.io] fallback to default memory adapter:', adapterErr?.message || adapterErr);
+        }
+    }
 
     const rateLimitPrefix = process.env.RATE_LIMIT_PREFIX || 'rl:';
 
@@ -284,6 +302,12 @@ const start = async () => {
             console.log(`Client joined leaderboard room: ${leaderboardId}`);
         });
 
+        socket.on('leaveLeaderboard', (leaderboardId) => {
+            if (!leaderboardId) return;
+            socket.leave(`leaderboard:${leaderboardId}`);
+            console.log(`Client left leaderboard room: ${leaderboardId}`);
+        });
+
         socket.on('disconnect', () => {
             console.log('Client disconnected');
         });
@@ -291,6 +315,34 @@ const start = async () => {
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`Server running on port http://localhost:${PORT}`));
+
+    // Graceful shutdown on SIGTERM / SIGINT for zero-downtime cloud deployments
+    const shutdown = async (signal) => {
+        console.log(`[shutdown] ${signal} received, closing HTTP & WebSocket server...`);
+        server.close(async () => {
+            console.log('[shutdown] HTTP server closed');
+            try {
+                if (redisClient && typeof redisClient.disconnect === 'function') {
+                    await redisClient.disconnect();
+                    console.log('[shutdown] Redis connection closed');
+                }
+                await mongoose.connection.close(false);
+                console.log('[shutdown] MongoDB connection closed');
+                process.exit(0);
+            } catch (err) {
+                console.error('[shutdown] error during cleanup:', err?.message || err);
+                process.exit(1);
+            }
+        });
+
+        setTimeout(() => {
+            console.error('[shutdown] forced exit after 10s timeout');
+            process.exit(1);
+        }, 10000).unref();
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
 start().catch((err) => {

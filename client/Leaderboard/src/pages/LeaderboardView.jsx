@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import { getSocket } from '../utils/socketSingleton';
 import axios from 'axios';
 import API_URL from '../config';
 import { useAuth, useModal } from '../App';
@@ -53,9 +53,7 @@ const LeaderboardView = () => {
     }, [editingEntry]);
 
     useEffect(() => {
-        const socket = io(API_URL, {
-            withCredentials: true,
-        });
+        const socket = getSocket();
         socketRef.current = socket;
 
         const fetchEntriesPage = async (cursorToUse, { reset }) => {
@@ -118,9 +116,26 @@ const LeaderboardView = () => {
             }
         };
 
+        const handleEntryReactionUpdated = (data) => {
+            if (!data?.entryId) return;
+            setEntries((prevEntries) =>
+                prevEntries.map((item) => {
+                    if (String(item._id) === String(data.entryId)) {
+                        return {
+                            ...item,
+                            likedBy: data.likedBy || item.likedBy,
+                            dislikedBy: data.dislikedBy || item.dislikedBy,
+                        };
+                    }
+                    return item;
+                })
+            );
+        };
+
         socket.on('leaderboardChanged', handleLeaderboardChanged);
         socket.on('leaderboardDeleted', handleLeaderboardDeleted);
         socket.on('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
+        socket.on('entryReactionUpdated', handleEntryReactionUpdated);
 
         const fetchData = async () => {
             try {
@@ -145,10 +160,13 @@ const LeaderboardView = () => {
 
         return () => {
             if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+            if (activeLeaderboardIdRef.current) {
+                socket.emit('leaveLeaderboard', activeLeaderboardIdRef.current);
+            }
             socket.off('leaderboardChanged', handleLeaderboardChanged);
             socket.off('leaderboardDeleted', handleLeaderboardDeleted);
             socket.off('leaderboardStatusUpdated', handleLeaderboardStatusUpdated);
-            socket.disconnect();
+            socket.off('entryReactionUpdated', handleEntryReactionUpdated);
         };
     }, [slug, navigate, showAlert]);
 

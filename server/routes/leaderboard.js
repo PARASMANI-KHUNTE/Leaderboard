@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const LeaderboardEntry = require('../models/Leaderboard');
+const Leaderboard = require('../models/LeaderboardCollection');
 const { User } = require('../models/User');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
@@ -12,9 +13,26 @@ const {
     validateObjectId,
 } = require('../middleware/validation');
 const { sendPushNotification } = require('../utils/push');
+const {
+    getRedisClient,
+    cacheGet,
+    cacheSet,
+    cacheDel,
+    cacheSetNX,
+    getVersion,
+    bumpVersion,
+} = require('../config/redis');
+const {
+    syncEntryToZSet,
+    removeEntryFromZSet,
+    hydrateZSet,
+} = require('../utils/redisRanking');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+
+// Single-flight in-memory promise map to eliminate cache stampedes / thundering herds
+const inflightQueries = new Map();
 
 function hasUserReaction(reactions = [], userId) {
     return reactions.some((id) => String(id) === String(userId));
@@ -39,22 +57,47 @@ function decodeCursor(cursorStr) {
 }
 
 async function getBanVersion(redisClient) {
-    const { getVersion } = require('../config/redis');
     return await getVersion(redisClient, 'lb:ban:version');
 }
 
 async function getEntriesVersion(redisClient, leaderboardId) {
-    const { getVersion } = require('../config/redis');
     return await getVersion(redisClient, `lb:${leaderboardId}:version`);
 }
 
 async function invalidateEntriesCache(redisClient, leaderboardId) {
     // We use versioned cache keys, so invalidation is a cheap INCR.
-    const { bumpVersion } = require('../config/redis');
     await bumpVersion(redisClient, `lb:${leaderboardId}:version`);
 }
 
-// Get entries for a specific leaderboard (cursor-based + stable ordering)
+// Cached banned user IDs resolver to eliminate full collection scans on every request
+async function getBannedUserIds(redisClient) {
+    if (redisClient) {
+        try {
+            const banVersion = await getBanVersion(redisClient);
+            const cacheKey = `lb:banned_ids:v:${banVersion}`;
+            const cached = await cacheGet(redisClient, cacheKey);
+            if (Array.isArray(cached)) {
+                return cached.map((id) => new mongoose.Types.ObjectId(id));
+            }
+        } catch {
+            // fallback to database query
+        }
+    }
+
+    const bannedUsers = await User.find({ isBanned: true }).select('_id').lean();
+    const bannedIds = bannedUsers.map((u) => u._id);
+
+    if (redisClient) {
+        try {
+            const banVersion = await getBanVersion(redisClient);
+            const cacheKey = `lb:banned_ids:v:${banVersion}`;
+            await cacheSet(redisClient, cacheKey, bannedIds.map(String), 300);
+        } catch {}
+    }
+    return bannedIds;
+}
+
+// Get entries for a specific leaderboard (cursor-based + stable ordering + stampede-protected)
 router.get('/:leaderboardId', async (req, res) => {
     try {
         const { leaderboardId } = req.params;
@@ -76,13 +119,8 @@ router.get('/:leaderboardId', async (req, res) => {
             ? new mongoose.Types.ObjectId(cursor.id)
             : null;
 
-        // First find all banned user IDs (to exclude them from results + rank calc)
-        const bannedUsers = await User.find({ isBanned: true }).select('_id');
-        const bannedUserIds = bannedUsers.map(u => u._id);
-
         const redisClient = await (async () => {
             try {
-                const { getRedisClient } = require('../config/redis');
                 return await getRedisClient();
             } catch {
                 return null;
@@ -98,148 +136,193 @@ router.get('/:leaderboardId', async (req, res) => {
             (limit === DEFAULT_LIMIT && page <= 2)
         );
 
+        let cacheKey = null;
         if (canCache) {
-            const [banVersion, entriesVersion] = await Promise.all([
-                getBanVersion(redisClient),
-                getEntriesVersion(redisClient, leaderboardId),
-            ]);
-            const cacheKey = `lb:${leaderboardId}:entries:page:${page}:limit:${limit}:banV:${banVersion}:v:${entriesVersion}`;
-            const cached = await require('../config/redis').cacheGet(redisClient, cacheKey);
-            if (cached) return res.json(cached);
+            try {
+                const [banVersion, entriesVersion] = await Promise.all([
+                    getBanVersion(redisClient),
+                    getEntriesVersion(redisClient, leaderboardId),
+                ]);
+                cacheKey = `lb:${leaderboardId}:entries:page:${page}:limit:${limit}:banV:${banVersion}:v:${entriesVersion}`;
+                const cached = await cacheGet(redisClient, cacheKey);
+                if (cached) {
+                    res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=45');
+                    return res.json(cached);
+                }
+            } catch {
+                cacheKey = null;
+            }
         }
 
-        const matchBase = {
-            leaderboardId: new mongoose.Types.ObjectId(leaderboardId),
-            userId: { $nin: bannedUserIds },
-        };
+        // Single-flight executor to coalesce concurrent cache misses into one database query
+        const executeFetch = async () => {
+            const bannedUserIds = await getBannedUserIds(redisClient);
 
-        const pipeline = [
-            { $match: matchBase },
-            // Compute a single composite tie key so MongoDB can apply `$rank`
-            // (it requires `sortBy` to contain exactly one element).
-            // Ordering still behaves like `(cgpa desc, marks desc)` and ties are based
-            // on identical `(cgpa, marks)`.
-            {
-                $addFields: {
-                    tieScore: {
-                        $add: [
-                            { $multiply: ['$cgpa', 1000000] },
-                            { $ifNull: ['$marks', 0] },
+            const matchBase = {
+                leaderboardId: new mongoose.Types.ObjectId(leaderboardId),
+                userId: { $nin: bannedUserIds },
+            };
+
+            const pipeline = [
+                { $match: matchBase },
+                {
+                    $addFields: {
+                        tieScore: {
+                            $add: [
+                                { $multiply: ['$cgpa', 1000000] },
+                                { $ifNull: ['$marks', 0] },
+                            ],
+                        },
+                    },
+                },
+                {
+                    $setWindowFields: {
+                        sortBy: { tieScore: -1 },
+                        output: {
+                            rank: { $rank: {} },
+                        },
+                    },
+                },
+            ];
+
+            // Cursor pagination (stable): order is cgpa desc, marks desc, _id desc.
+            if (
+                cursorId &&
+                Number.isFinite(Number(cursorCgpa)) &&
+                (cursorMarks === null || Number.isFinite(Number(cursorMarks)))
+            ) {
+                pipeline.push({
+                    $match: {
+                        $or: [
+                            { cgpa: { $lt: cursorCgpa } },
+                            {
+                                cgpa: cursorCgpa,
+                                marks: { $lt: cursorMarks },
+                            },
+                            {
+                                cgpa: cursorCgpa,
+                                marks: cursorMarks,
+                                _id: { $lt: cursorId },
+                            },
                         ],
                     },
-                },
-            },
-            // Compute global, tie-aware rank using only `(cgpa, marks)` as the tie key.
-            {
-                $setWindowFields: {
-                    sortBy: { tieScore: -1 },
-                    output: {
-                        rank: { $rank: {} },
-                    },
-                },
-            },
-        ];
-
-        // Cursor pagination (stable): order is cgpa desc, marks desc, _id desc.
-        if (
-            cursorId &&
-            Number.isFinite(Number(cursorCgpa)) &&
-            (cursorMarks === null || Number.isFinite(Number(cursorMarks)))
-        ) {
-            pipeline.push({
-                $match: {
-                    $or: [
-                        { cgpa: { $lt: cursorCgpa } },
-                        {
-                            cgpa: cursorCgpa,
-                            marks: { $lt: cursorMarks },
-                        },
-                        {
-                            cgpa: cursorCgpa,
-                            marks: cursorMarks,
-                            _id: { $lt: cursorId },
-                        },
-                    ],
-                },
-            });
-        }
-
-        pipeline.push(
-            { $sort: { cgpa: -1, marks: -1, _id: -1 } },
-            { $limit: limit + 1 },
-            {
-                $project: {
-                    // Keep fields required by the frontend UI.
-                    _id: 1,
-                    leaderboardId: 1,
-                    userId: 1,
-                    name: 1,
-                    cgpa: 1,
-                    marks: 1,
-                    useMarks: 1,
-                    userPicture: 1,
-                    likedBy: 1,
-                    dislikedBy: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    rank: 1,
-                },
+                });
             }
-        );
 
-        const result = await LeaderboardEntry.aggregate(pipeline);
+            pipeline.push(
+                { $sort: { cgpa: -1, marks: -1, _id: -1 } },
+                { $limit: limit + 1 },
+                {
+                    $project: {
+                        _id: 1,
+                        leaderboardId: 1,
+                        userId: 1,
+                        name: 1,
+                        cgpa: 1,
+                        marks: 1,
+                        useMarks: 1,
+                        userPicture: 1,
+                        likedBy: 1,
+                        dislikedBy: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        rank: 1,
+                    },
+                }
+            );
 
-        const hasMore = result.length > limit;
-        const items = hasMore ? result.slice(0, limit) : result;
+            const result = await LeaderboardEntry.aggregate(pipeline);
 
-        let nextCursor = null;
-        if (hasMore) {
-            const last = items[items.length - 1];
-            nextCursor = encodeCursor({
-                cgpa: last.cgpa,
-                marks: last.marks,
-                id: last._id.toString(),
-                page: page + 1,
-            });
-        }
+            const hasMore = result.length > limit;
+            const items = hasMore ? result.slice(0, limit) : result;
 
-        const response = {
-            items,
-            hasMore,
-            nextCursor,
-            page,
+            let nextCursor = null;
+            if (hasMore) {
+                const last = items[items.length - 1];
+                nextCursor = encodeCursor({
+                    cgpa: last.cgpa,
+                    marks: last.marks,
+                    id: last._id.toString(),
+                    page: page + 1,
+                });
+            }
+
+            const response = {
+                items,
+                hasMore,
+                nextCursor,
+                page,
+            };
+
+            if (canCache && cacheKey) {
+                await cacheSet(
+                    redisClient,
+                    cacheKey,
+                    response,
+                    Number(process.env.REDIS_CACHE_TTL_SECONDS) || 45
+                );
+            }
+
+            // Hydrate Redis ZSET in background for fast rank indexing
+            if (redisClient && items.length > 0) {
+                hydrateZSet(redisClient, leaderboardId, items).catch(() => {});
+            }
+
+            return response;
         };
 
-        if (canCache) {
-            const [banVersion, entriesVersion] = await Promise.all([
-                getBanVersion(redisClient),
-                getEntriesVersion(redisClient, leaderboardId),
-            ]);
-            const cacheKey = `lb:${leaderboardId}:entries:page:${page}:limit:${limit}:banV:${banVersion}:v:${entriesVersion}`;
-            await require('../config/redis').cacheSet(redisClient, cacheKey, response, Number(process.env.REDIS_CACHE_TTL_SECONDS) || 45);
+        res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=45');
+
+        if (canCache && cacheKey) {
+            if (inflightQueries.has(cacheKey)) {
+                const coalescedResponse = await inflightQueries.get(cacheKey);
+                return res.json(coalescedResponse);
+            }
+
+            const fetchPromise = executeFetch().finally(() => {
+                inflightQueries.delete(cacheKey);
+            });
+            inflightQueries.set(cacheKey, fetchPromise);
+
+            const response = await fetchPromise;
+            return res.json(response);
         }
 
-        res.json(response);
+        const response = await executeFetch();
+        return res.json(response);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
-// Submit entry
+// Submit entry (race-condition free with idempotency mutex + unique index constraint + atomic count)
 router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
     const { name, cgpa, marks, leaderboardId } = req.body;
+    let lockKey = null;
+    let redisClient = null;
 
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).select('_id profilePicture isBanned');
         if (!user) return res.status(404).json({ message: 'User not found' });
+        if (user.isBanned) return res.status(403).json({ message: 'Your account has been banned' });
 
-        const Leaderboard = require('../models/LeaderboardCollection');
         const leaderboard = await Leaderboard.findById(leaderboardId);
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
         if (!leaderboard.isLive) return res.status(403).json({ message: 'This leaderboard is currently closed for submissions' });
 
-        const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId });
+        // Acquire 5-second distributed idempotency lock to prevent double-submits
+        redisClient = await getRedisClient().catch(() => null);
+        if (redisClient) {
+            lockKey = `lock:submit:${leaderboardId}:${user._id}`;
+            const acquired = await cacheSetNX(redisClient, lockKey, '1', 5);
+            if (!acquired) {
+                return res.status(429).json({ message: 'Submission already processing, please wait' });
+            }
+        }
+
+        const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId }).select('_id');
         if (existingEntry) {
+            if (lockKey && redisClient) await cacheDel(redisClient, lockKey);
             return res.status(400).json({ message: 'You have already made an entry in this leaderboard' });
         }
 
@@ -254,17 +337,31 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
             userPicture: user.profilePicture
         });
 
-        await entry.save();
+        try {
+            await entry.save();
+        } catch (saveErr) {
+            if (saveErr.code === 11000) {
+                if (lockKey && redisClient) await cacheDel(redisClient, lockKey);
+                return res.status(409).json({ message: 'You have already made an entry in this leaderboard' });
+            }
+            throw saveErr;
+        }
 
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = await getRedisClient();
-        if (redisClient) await invalidateEntriesCache(redisClient, leaderboardId);
+        // Increment entryCount atomically on the leaderboard collection
+        await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: 1 } }).catch(() => {});
+
+        if (redisClient) {
+            await syncEntryToZSet(redisClient, leaderboardId, entry).catch(() => {});
+            await invalidateEntriesCache(redisClient, leaderboardId);
+            if (lockKey) await cacheDel(redisClient, lockKey);
+        }
 
         const io = req.app.get('socketio');
         io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
 
         res.status(201).json(entry);
     } catch (err) {
+        if (lockKey && redisClient) await cacheDel(redisClient, lockKey).catch(() => {});
         res.status(400).json({ message: err.message });
     }
 });
@@ -290,9 +387,11 @@ router.put('/edit/:id', auth, validateObjectId(), validateLeaderboardEntryEdit, 
 
         await entry.save();
 
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = await getRedisClient();
-        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
+        const redisClient = await getRedisClient().catch(() => null);
+        if (redisClient) {
+            await syncEntryToZSet(redisClient, entry.leaderboardId, entry).catch(() => {});
+            await invalidateEntriesCache(redisClient, entry.leaderboardId);
+        }
 
         const leaderboardId = entry.leaderboardId;
         const io = req.app.get('socketio');
@@ -304,7 +403,7 @@ router.put('/edit/:id', auth, validateObjectId(), validateLeaderboardEntryEdit, 
     }
 });
 
-// Delete entry
+// Delete entry (with atomic entryCount decrement)
 router.delete('/delete/:id', auth, async (req, res) => {
     try {
         const entry = await LeaderboardEntry.findById(req.params.id);
@@ -313,9 +412,7 @@ router.delete('/delete/:id', auth, async (req, res) => {
         const leaderboardId = entry.leaderboardId;
 
         // Check if user is the entry owner OR the leaderboard creator
-        const Leaderboard = require('../models/LeaderboardCollection');
         const leaderboard = await Leaderboard.findById(leaderboardId);
-
         const isOwner = entry.userId.toString() === req.user.id;
         const isCreator = leaderboard && leaderboard.createdBy.toString() === req.user.id;
 
@@ -325,9 +422,14 @@ router.delete('/delete/:id', auth, async (req, res) => {
 
         await LeaderboardEntry.findByIdAndDelete(req.params.id);
 
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = await getRedisClient();
-        if (redisClient) await invalidateEntriesCache(redisClient, leaderboardId);
+        // Decrement entryCount atomically
+        await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: -1 } }).catch(() => {});
+
+        const redisClient = await getRedisClient().catch(() => null);
+        if (redisClient) {
+            await removeEntryFromZSet(redisClient, leaderboardId, req.params.id).catch(() => {});
+            await invalidateEntriesCache(redisClient, leaderboardId);
+        }
 
         const io = req.app.get('socketio');
         io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
@@ -338,116 +440,132 @@ router.delete('/delete/:id', auth, async (req, res) => {
     }
 });
 
-// Add reaction (Heart) - Toggles Like
+// Add reaction (Heart) - Atomic toggle with targeted socket event (no cache wipe)
 router.post('/react/:id', auth, async (req, res) => {
     try {
-        const entry = await LeaderboardEntry.findById(req.params.id);
+        const entry = await LeaderboardEntry.findById(req.params.id).select('_id leaderboardId userId likedBy dislikedBy');
         if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
         const userId = req.user.id;
-        if (!entry.likedBy) entry.likedBy = [];
-        if (!entry.dislikedBy) entry.dislikedBy = [];
         const hasLike = hasUserReaction(entry.likedBy, userId);
-        const hasDislike = hasUserReaction(entry.dislikedBy, userId);
-
+        let updateQuery;
         let isLiked = false;
 
-        // If currently disliked, remove the dislike
-        if (hasDislike) {
-            entry.dislikedBy = removeUserReaction(entry.dislikedBy, userId);
+        if (hasLike) {
+            // Unlike atomically via $pull
+            updateQuery = {
+                $pull: { likedBy: userId }
+            };
+            isLiked = false;
+        } else {
+            // Like atomically via $addToSet and pull any existing dislike
+            updateQuery = {
+                $addToSet: { likedBy: userId },
+                $pull: { dislikedBy: userId }
+            };
+            isLiked = true;
         }
 
-        if (hasLike) {
-            // Unlike
-            entry.likedBy = removeUserReaction(entry.likedBy, userId);
-        } else {
-            // Like
-            entry.likedBy.push(userId);
-            isLiked = true;
+        const updatedEntry = await LeaderboardEntry.findByIdAndUpdate(
+            req.params.id,
+            updateQuery,
+            { new: true, select: '_id leaderboardId userId likedBy dislikedBy' }
+        );
 
-            // Only notify on like, not unlike
-            const io = req.app.get('socketio');
-            const user = await User.findById(userId);
-            const Leaderboard = require('../models/LeaderboardCollection');
-            const leaderboard = await Leaderboard.findById(entry.leaderboardId);
-            io.to(`user:${entry.userId}`).emit('globalNotification', {
+        const io = req.app.get('socketio');
+
+        // Broadcast targeted reaction update: clients update the row in-place with ZERO refetches
+        io.to(`leaderboard:${updatedEntry.leaderboardId}`).emit('entryReactionUpdated', {
+            leaderboardId: String(updatedEntry.leaderboardId),
+            entryId: String(updatedEntry._id),
+            hearts: updatedEntry.likedBy.length,
+            dislikes: updatedEntry.dislikedBy.length,
+            likedBy: updatedEntry.likedBy,
+            dislikedBy: updatedEntry.dislikedBy,
+            userId,
+            action: isLiked ? 'liked' : 'unliked'
+        });
+
+        // Notify card owner only on like
+        if (isLiked) {
+            const user = await User.findById(userId).select('displayName').lean();
+            const lb = await Leaderboard.findById(updatedEntry.leaderboardId).select('slug').lean();
+            io.to(`user:${updatedEntry.userId}`).emit('globalNotification', {
                 type: 'heart',
-                message: `${user.displayName} liked your card!`,
-                entryId: entry._id,
-                target: `/lb/${leaderboard.slug}`
+                message: `${user?.displayName || 'Someone'} liked your card!`,
+                entryId: updatedEntry._id,
+                target: `/lb/${lb?.slug || ''}`
             });
         }
 
-        await entry.save();
-
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = await getRedisClient();
-        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
-
-        const io = req.app.get('socketio');
-        io.to(`leaderboard:${entry.leaderboardId}`).emit('leaderboardChanged', { leaderboardId: entry.leaderboardId });
-
-        res.json({ hearts: entry.likedBy.length, isLiked, dislikes: entry.dislikedBy.length });
+        res.json({ hearts: updatedEntry.likedBy.length, isLiked, dislikes: updatedEntry.dislikedBy.length });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
 });
 
-// Add reaction (ThumbsDown) - Toggles Dislike
+// Add reaction (ThumbsDown) - Atomic toggle with targeted socket event (no cache wipe)
 router.post('/dislike/:id', auth, async (req, res) => {
     try {
-        const entry = await LeaderboardEntry.findById(req.params.id);
+        const entry = await LeaderboardEntry.findById(req.params.id).select('_id leaderboardId userId likedBy dislikedBy');
         if (!entry) return res.status(404).json({ message: 'Entry not found' });
 
         const userId = req.user.id;
-        if (!entry.likedBy) entry.likedBy = [];
-        if (!entry.dislikedBy) entry.dislikedBy = [];
-        const hasLike = hasUserReaction(entry.likedBy, userId);
         const hasDislike = hasUserReaction(entry.dislikedBy, userId);
-
+        let updateQuery;
         let isDisliked = false;
 
-        // If currently liked, remove the like
-        if (hasLike) {
-            entry.likedBy = removeUserReaction(entry.likedBy, userId);
+        if (hasDislike) {
+            // Undislike atomically via $pull
+            updateQuery = {
+                $pull: { dislikedBy: userId }
+            };
+            isDisliked = false;
+        } else {
+            // Dislike atomically via $addToSet and pull any existing like
+            updateQuery = {
+                $addToSet: { dislikedBy: userId },
+                $pull: { likedBy: userId }
+            };
+            isDisliked = true;
         }
 
-        if (hasDislike) {
-            // Undislike
-            entry.dislikedBy = removeUserReaction(entry.dislikedBy, userId);
-        } else {
-            // Dislike
-            entry.dislikedBy.push(userId);
-            isDisliked = true;
+        const updatedEntry = await LeaderboardEntry.findByIdAndUpdate(
+            req.params.id,
+            updateQuery,
+            { new: true, select: '_id leaderboardId userId likedBy dislikedBy' }
+        );
 
-            // Notify on dislike
-            const io = req.app.get('socketio');
-            const user = await User.findById(userId);
-            const Leaderboard = require('../models/LeaderboardCollection');
-            const leaderboard = await Leaderboard.findById(entry.leaderboardId);
-            
-            io.to(`user:${entry.userId}`).emit('globalNotification', {
-                type: 'thumbs-down', // Frontend will pick an icon
-                message: `${user.displayName} disliked your card.`,
-                entryId: entry._id,
-                target: `/lb/${leaderboard.slug}`
+        const io = req.app.get('socketio');
+
+        // Broadcast targeted reaction update: clients update the row in-place with ZERO refetches
+        io.to(`leaderboard:${updatedEntry.leaderboardId}`).emit('entryReactionUpdated', {
+            leaderboardId: String(updatedEntry.leaderboardId),
+            entryId: String(updatedEntry._id),
+            hearts: updatedEntry.likedBy.length,
+            dislikes: updatedEntry.dislikedBy.length,
+            likedBy: updatedEntry.likedBy,
+            dislikedBy: updatedEntry.dislikedBy,
+            userId,
+            action: isDisliked ? 'disliked' : 'undisliked'
+        });
+
+        // Notify card owner only on dislike
+        if (isDisliked) {
+            const user = await User.findById(userId).select('displayName').lean();
+            const lb = await Leaderboard.findById(updatedEntry.leaderboardId).select('slug').lean();
+            io.to(`user:${updatedEntry.userId}`).emit('globalNotification', {
+                type: 'thumbs-down',
+                message: `${user?.displayName || 'Someone'} disliked your card.`,
+                entryId: updatedEntry._id,
+                target: `/lb/${lb?.slug || ''}`
             });
         }
 
-        await entry.save();
-
-        const { getRedisClient } = require('../config/redis');
-        const redisClient = await getRedisClient();
-        if (redisClient) await invalidateEntriesCache(redisClient, entry.leaderboardId);
-
-        const io = req.app.get('socketio');
-        io.to(`leaderboard:${entry.leaderboardId}`).emit('leaderboardChanged', { leaderboardId: entry.leaderboardId });
-
-        res.json({ hearts: entry.likedBy.length, dislikes: entry.dislikedBy.length, isDisliked });
+        res.json({ hearts: updatedEntry.likedBy.length, dislikes: updatedEntry.dislikedBy.length, isDisliked });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
 });
-
 
 module.exports = router;

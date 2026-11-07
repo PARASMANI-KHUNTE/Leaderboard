@@ -69,12 +69,13 @@ router.get('/', async (req, res) => {
             .limit(limit)
             .lean();
 
-        // Add entry count for each leaderboard
-        const enhancedLeaderboards = await Promise.all(leaderboards.map(async (lb) => {
-            const entryCount = await LeaderboardEntry.countDocuments({ leaderboardId: lb._id });
-            return { ...lb, entryCount };
+        // Use direct entryCount property (eliminates N+1 countDocuments queries)
+        const enhancedLeaderboards = leaderboards.map((lb) => ({
+            ...lb,
+            entryCount: typeof lb.entryCount === 'number' && lb.entryCount >= 0 ? lb.entryCount : 0,
         }));
 
+        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
         res.json({
             leaderboards: enhancedLeaderboards,
             pagination: {

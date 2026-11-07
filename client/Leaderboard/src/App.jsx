@@ -30,6 +30,12 @@ const PageLoader = () => (
 
 axios.defaults.withCredentials = true;
 
+// Restore auth token from storage if present (supports both Bearer header and cookies)
+const initialToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+if (initialToken) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
+}
+
 const AuthContext = createContext();
 const ModalContext = createContext();
 
@@ -82,6 +88,8 @@ const AuthProvider = ({ children }) => {
   const { showAlert } = useModal();
 
   const logout = React.useCallback(() => {
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     setLoading(false);
     window.location.href = `${API_URL}/auth/logout`;
@@ -92,9 +100,14 @@ const AuthProvider = ({ children }) => {
       const res = await axios.get(`${API_URL}/auth/profile`);
       setUser(res.data);
     } catch (err) {
-      console.error('Failed to fetch profile', err);
-      if (err.response?.status === 403) {
+      if (err.response?.status === 401) {
+        // Expected when user is not logged in or token is expired
+        localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
+      } else if (err.response?.status === 403) {
         await showAlert('Banned', 'Your account has been banned.');
+      } else {
+        console.error('Failed to fetch profile', err);
       }
       setUser(null);
     } finally {
@@ -138,7 +151,12 @@ const LoginSuccess = () => {
       }
 
       try {
-        await axios.post(`${API_URL}/auth/exchange`, { code });
+        const exchangeRes = await axios.post(`${API_URL}/auth/exchange`, { code });
+        const token = exchangeRes.data?.token;
+        if (token) {
+          localStorage.setItem('token', token);
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
         await login();
         navigate('/', { replace: true });
       } catch {

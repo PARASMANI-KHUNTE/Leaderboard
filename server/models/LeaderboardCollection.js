@@ -19,6 +19,14 @@ const LeaderboardSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    entryCount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
 }, { timestamps: true });
+
+// Index for filtering live/maintenance boards and ordering by creation date
+LeaderboardSchema.index({ isLive: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Leaderboard', LeaderboardSchema);

@@ -67,8 +67,11 @@ router.post('/resolve-report/:reportId', auth, admin, validateObjectId('reportId
 
             await LeaderboardEntry.findByIdAndDelete(report.entryId);
 
-            // Invalidate leaderboard entry/rank cache + notify live clients.
             if (leaderboardId) {
+                const Leaderboard = require('../models/LeaderboardCollection');
+                await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: -1 } }).catch(() => {});
+
+                // Invalidate leaderboard entry/rank cache + notify live clients.
                 const io = req.app.get('socketio');
                 const { getRedisClient, bumpVersion } = require('../config/redis');
                 const redisClient = await getRedisClient();

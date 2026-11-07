@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Heart, MessageSquare, Flag, Trash2, ThumbsDown, Monitor, BellOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { io } from 'socket.io-client';
+import { getSocket } from '../utils/socketSingleton';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import API_URL from '../config';
@@ -18,9 +18,7 @@ const NotificationCenter = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = io(API_URL, {
-            withCredentials: true,
-        });
+        const socket = getSocket();
 
         if (user.isAdmin) {
             socket.emit('joinAdmin');
@@ -38,7 +36,9 @@ const NotificationCenter = () => {
 
         socket.on('globalNotification', handleGlobalNotif);
 
-        return () => socket.disconnect();
+        return () => {
+            socket.off('globalNotification', handleGlobalNotif);
+        };
     }, [user]);
 
     const handleToggle = () => {
