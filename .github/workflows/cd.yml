@@ -34,11 +34,11 @@ jobs:
     name: Deploy Backend API
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'server'
     runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
       - name: Trigger Render Deploy Hook
         if: env.RENDER_DEPLOY_HOOK_URL != ''
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           echo "Triggering automated backend deployment via deploy hook..."
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
@@ -101,6 +101,8 @@ jobs:
     name: Publish Mobile OTA Update (Expo EAS)
     if: (github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'mobile-ota')
     runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     defaults:
       run:
         working-directory: mobile/eliteboards-mobile
@@ -120,14 +122,11 @@ jobs:
 
       - name: Setup EAS CLI
         if: env.EXPO_TOKEN != ''
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: npm install -g eas-cli
 
       - name: Publish OTA Update
         if: env.EXPO_TOKEN != ''
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           CHANNEL: ${{ inputs.channel || 'production' }}
         run: |
           echo "Publishing over-the-air update to channel: ${CHANNEL}..."
