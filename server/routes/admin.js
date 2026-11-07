@@ -4,6 +4,7 @@ const { User, Report, Feedback } = require('../models/User');
 const LeaderboardEntry = require('../models/Leaderboard');
 const { auth, admin } = require('../middleware/auth');
 const mongoose = require('mongoose');
+const { validateObjectId } = require('../middleware/validation');
 
 // Get all reports
 router.get('/reports', auth, admin, async (req, res) => {
@@ -29,7 +30,7 @@ router.get('/feedback', auth, admin, async (req, res) => {
 });
 
 // Ban/Unban user
-router.post('/toggle-ban/:userId', auth, admin, async (req, res) => {
+router.post('/toggle-ban/:userId', auth, admin, validateObjectId('userId'), async (req, res) => {
     try {
         const user = await User.findById(req.params.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -51,9 +52,12 @@ router.post('/toggle-ban/:userId', auth, admin, async (req, res) => {
 });
 
 // Resolve report (and optionally delete entry)
-router.post('/resolve-report/:reportId', auth, admin, async (req, res) => {
+router.post('/resolve-report/:reportId', auth, admin, validateObjectId('reportId'), async (req, res) => {
     const { action } = req.body; // 'delete' or 'ignore'
     try {
+        if (action !== 'delete' && action !== 'ignore') {
+            return res.status(400).json({ message: 'Action must be delete or ignore' });
+        }
         const report = await Report.findById(req.params.reportId);
         if (!report) return res.status(404).json({ message: 'Report not found' });
 
@@ -84,14 +88,15 @@ router.post('/resolve-report/:reportId', auth, admin, async (req, res) => {
 
 // Get all users with search and report counts
 router.get('/users', auth, admin, async (req, res) => {
-    const { search } = req.query;
+    const search = String(req.query.search || '').trim().slice(0, 100);
     try {
         let query = {};
         if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query = {
                 $or: [
-                    { displayName: { $regex: search, $options: 'i' } },
-                    { email: { $regex: search, $options: 'i' } }
+                    { displayName: { $regex: escapedSearch, $options: 'i' } },
+                    { email: { $regex: escapedSearch, $options: 'i' } }
                 ]
             };
         }
@@ -144,7 +149,7 @@ router.get('/users', auth, admin, async (req, res) => {
 });
 
 // Delete feedback
-router.delete('/feedback/:id', auth, admin, async (req, res) => {
+router.delete('/feedback/:id', auth, admin, validateObjectId(), async (req, res) => {
     try {
         await Feedback.findByIdAndDelete(req.params.id);
         res.json({ message: 'Feedback deleted successfully' });
@@ -154,7 +159,7 @@ router.delete('/feedback/:id', auth, admin, async (req, res) => {
 });
 
 // Toggle feedback read status
-router.patch('/feedback/:id/toggle-read', auth, admin, async (req, res) => {
+router.patch('/feedback/:id/toggle-read', auth, admin, validateObjectId(), async (req, res) => {
     try {
         const feedback = await Feedback.findById(req.params.id);
         if (!feedback) return res.status(404).json({ message: 'Feedback not found' });
@@ -168,7 +173,7 @@ router.patch('/feedback/:id/toggle-read', auth, admin, async (req, res) => {
 });
 
 // Delete user (admin action with cascading cleanup)
-router.delete('/user/:id', auth, admin, async (req, res) => {
+router.delete('/user/:id', auth, admin, validateObjectId(), async (req, res) => {
     const userId = req.params.id;
 
     try {
