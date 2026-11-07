@@ -1,4 +1,4 @@
-name: CI
+name: CI Pipeline
 
 on:
   push:
@@ -6,57 +6,126 @@ on:
       - main
       - master
   pull_request:
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   server:
+    name: Server Tests & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: server/package-lock.json
-      - run: npm ci
-      - run: npm test
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Syntax Check
+        run: npm run check
+
+      - name: Run Test Suite
+        run: npm test
 
   web:
+    name: Web Client Lint & Build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client/Leaderboard
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: client/Leaderboard/package-lock.json
-      - run: npm ci
-      - run: npm run check
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: ESLint Check
+        run: npm run lint
+
+      - name: Production Vite Build
+        run: npm run build
         env:
           VITE_API_URL: http://localhost:5000
 
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: client/Leaderboard/dist
+          retention-days: 7
+
   mobile:
+    name: Mobile Verification & Hermes Export
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: mobile/eliteboards-mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: mobile/eliteboards-mobile/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run check-config
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: Expo Config Check
+        run: npm run check-config
         env:
           EXPO_PUBLIC_API_URL: https://example.com
-      - run: npm run doctor
+
+      - name: Expo Doctor Health Check
+        run: npm run doctor
         env:
           EXPO_PUBLIC_API_URL: https://example.com
+
+      - name: Verify Production Hermes Export
+        run: npm run build:export
+        env:
+          EXPO_PUBLIC_API_URL: https://example.com
+
+  ci-status:
+    name: CI Status Gate
+    needs: [server, web, mobile]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Evaluate Job Results
+        run: |
+          if [ "${{ needs.server.result }}" != "success" ] || \
+             [ "${{ needs.web.result }}" != "success" ] || \
+             [ "${{ needs.mobile.result }}" != "success" ]; then
+            echo "CI pipeline failed! One or more checks did not pass."
+            exit 1
+          fi
+          echo "All CI checks (Server, Web, Mobile) passed successfully!"

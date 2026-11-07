@@ -1,0 +1,141 @@
+name: CD Pipeline (Continuous Deployment)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - server
+          - web
+          - mobile-ota
+      channel:
+        description: 'Mobile OTA update channel'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-server:
+    name: Deploy Backend API
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'server'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering automated backend deployment via deploy hook..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Render deploy hook triggered successfully (HTTP $HTTP_STATUS)."
+          else
+            echo "Failed to trigger deploy hook (HTTP $HTTP_STATUS)."
+            exit 1
+          fi
+
+      - name: Verify Backend Health
+        run: |
+          BACKEND_URL="${{ secrets.PRODUCTION_API_URL || 'https://leaderboard-backend-3pek.onrender.com' }}"
+          echo "Checking backend health at ${BACKEND_URL}/health..."
+          for i in {1..12}; do
+            STATUS=$(curl -s "${BACKEND_URL}/health" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "DOWN")
+            if [ "$STATUS" = "UP" ]; then
+              echo "Backend is live and reported UP!"
+              exit 0
+            fi
+            echo "Waiting for backend to be ready (attempt $i/12)..."
+            sleep 10
+          done
+          echo "Notice: Backend health check timed out or reported non-UP status. Check cloud hosting logs."
+
+  deploy-web:
+    name: Build & Package Web Client
+    if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'web'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/Leaderboard
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/Leaderboard/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Web Application
+        env:
+          VITE_API_URL: ${{ secrets.PRODUCTION_API_URL || 'https://leaderboard-backend-3pek.onrender.com' }}
+        run: npm run build
+
+      - name: Archive Production Release Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-web-bundle
+          path: client/Leaderboard/dist
+          retention-days: 30
+
+  deploy-mobile-ota:
+    name: Publish Mobile OTA Update (Expo EAS)
+    if: (github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'mobile-ota')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/eliteboards-mobile
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/eliteboards-mobile/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Setup EAS CLI
+        if: env.EXPO_TOKEN != ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npm install -g eas-cli
+
+      - name: Publish OTA Update
+        if: env.EXPO_TOKEN != ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CHANNEL: ${{ inputs.channel || 'production' }}
+        run: |
+          echo "Publishing over-the-air update to channel: ${CHANNEL}..."
+          npx eas-cli update --auto --channel "${CHANNEL}" --non-interactive
+          echo "OTA update published successfully!"
+
+      - name: Skip OTA Notice
+        if: env.EXPO_TOKEN == ''
+        run: |
+          echo "EXPO_TOKEN secret is not configured in repository secrets."
+          echo "Skipping automated EAS OTA update publish. To enable, add EXPO_TOKEN to repository secrets."

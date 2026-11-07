@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "check-config": "expo config --type public",
-    "doctor": "npx --yes expo-doctor"
+    "doctor": "npx --yes expo-doctor",
+    "build:export": "expo export --platform android --platform ios"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

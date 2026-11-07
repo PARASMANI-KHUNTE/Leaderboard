@@ -2,10 +2,22 @@
   "name": "eliteboards-workspace",
   "private": true,
   "version": "1.0.0",
+  "description": "EliteBoards full-stack real-time leaderboard platform (Web, Mobile, Server)",
   "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix client/Leaderboard run dev",
+    "dev:mobile": "npm --prefix mobile/eliteboards-mobile run start",
+    "build": "npm run build:web && npm run build:mobile",
+    "build:web": "npm --prefix client/Leaderboard run build",
+    "build:mobile": "npm --prefix mobile/eliteboards-mobile run build:export",
+    "lint": "npm run lint:server && npm run lint:web",
+    "lint:server": "npm --prefix server run check",
+    "lint:web": "npm --prefix client/Leaderboard run lint",
+    "typecheck": "npm --prefix mobile/eliteboards-mobile run typecheck",
     "test": "npm run test:server && npm run test:web && npm run test:mobile",
     "test:server": "npm --prefix server test",
     "test:web": "npm --prefix client/Leaderboard run check",
-    "test:mobile": "npm --prefix mobile/eliteboards-mobile run typecheck && npm --prefix mobile/eliteboards-mobile run check-config && npm --prefix mobile/eliteboards-mobile run doctor"
+    "test:mobile": "npm --prefix mobile/eliteboards-mobile run typecheck && npm --prefix mobile/eliteboards-mobile run check-config && npm --prefix mobile/eliteboards-mobile run doctor",
+    "clean": "node -e \"const fs = require('fs'); ['client/Leaderboard/dist', 'mobile/eliteboards-mobile/dist'].forEach(d => { if (fs.existsSync(d)) fs.rmSync(d, { recursive: true, force: true }); }); console.log('Cleaned build artifacts.');\""
   }
 }
