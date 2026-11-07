@@ -318,7 +318,7 @@ const EntryForm = ({ leaderboard, editingEntry, onCancel, onSuccess }) => {
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Marks Obtained (Max 700)</label>
                             <input type="number" step="1" min="0" max="700" value={marks} onChange={(e) => setMarks(e.target.value)} placeholder="Enter total marks out of 700" className="w-full bg-indigo-500/10 border border-indigo-500/30 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 text-indigo-100 placeholder:text-indigo-400/50" required />
-                            {isPromoted ? <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">Promoted Student Mode Activated</p> : <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Used as a tie-breaker if ranking metrics are identical.</p>}
+                            {parseFloat(marks) === 0 ? <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">Promoted Student Mode Activated</p> : <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Used as a tie-breaker if ranking metrics are identical.</p>}
                         </div>
                     )}
                 </>

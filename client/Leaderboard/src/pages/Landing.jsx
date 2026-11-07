@@ -43,7 +43,10 @@ const Landing = () => {
         });
 
         socket.on('leaderboardCreated', (newBoard) => {
-            setLeaderboards(prev => [newBoard, ...prev].slice(0, 3));
+            setLeaderboards(prev => {
+                if (prev.some(lb => lb._id === newBoard._id)) return prev;
+                return [newBoard, ...prev].slice(0, 3);
+            });
         });
 
         socket.on('leaderboardDeleted', (deletedId) => {
@@ -70,7 +73,10 @@ const Landing = () => {
                 }
             );
             showAlert('Success', 'Leaderboard created! Share the link with students.');
-            setLeaderboards((prev) => [res.data, ...prev]);
+            setLeaderboards((prev) => {
+                if (prev.some(lb => lb._id === res.data._id)) return prev;
+                return [res.data, ...prev].slice(0, 3);
+            });
             setShowCreateModal(false);
             setNewName('');
             setEntryMode('manual');

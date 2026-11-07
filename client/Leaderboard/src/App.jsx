@@ -92,7 +92,9 @@ const AuthProvider = ({ children }) => {
       const res = await axios.get(`${API_URL}/auth/profile`);
       setUser(res.data);
     } catch (err) {
-      console.error('Failed to fetch profile', err);
+      if (err.response?.status !== 401) {
+        console.error('Failed to fetch profile', err);
+      }
       if (err.response?.status === 403) {
         await showAlert('Banned', 'Your account has been banned.');
       }
