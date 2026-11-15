@@ -166,3 +166,16 @@ This report summarizes the features currently present in the repository codebase
   - In this repository version, there is no obvious CSV/PDF generation code and no common PDF/export dependencies (for example `jspdf`) found in the client dependencies.
   - Treat exports as “planned/claimed” rather than confirmed implemented.
 
+## 6. Real-time Architecture & Verification Infrastructure
+- **Redis Concurrency & Distributed Engine**:
+  - Compound unique constraint `{ leaderboardId: 1, userId: 1 }` on `Leaderboard` entries.
+  - Single-flight promise coalescing (`inflightQueries` map) preventing thundering herd cache stampedes.
+  - Sub-millisecond composite ranking score with tie-breaking in `server/utils/redisRanking.js`.
+  - Zero-cost reaction decoupling: targeted socket events update cards in-place without invalidating ranking caches.
+- **Automated Document Verification Pipeline**:
+  - Image preprocessing and compression using `sharp`.
+  - Multi-engine OCR text extraction via `tesseract.js` and `pdf-parse`.
+  - LLM-assisted verification and university/program alias reconciliation via OpenRouter.
+  - Atomic leaderboard submission counter synchronization.
+
+
