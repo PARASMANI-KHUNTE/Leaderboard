@@ -122,9 +122,48 @@ export default function Home() {
 
         <Text style={styles.cardName}>{item.name}</Text>
 
-        <View style={styles.cardMeta}>
-          <Ionicons name="people-outline" size={12} color="#475569" />
-          <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
+        <View style={styles.cardBadges}>
+          <View style={styles.cardMeta}>
+            <Ionicons name="people-outline" size={11} color="#94a3b8" />
+            <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
+          </View>
+          {item.entryMode ? (
+            <View style={styles.cardModeBadge}>
+              <Text style={styles.cardModeText}>
+                {item.entryMode === 'upload' ? 'DOC VERIFIED' : item.entryMode === 'hybrid' ? 'HYBRID' : 'DIRECT ENTRY'}
+              </Text>
+            </View>
+          ) : null}
+          {item.ranking?.primaryField ? (
+            <View style={styles.cardFieldBadge}>
+              <Text style={styles.cardFieldText}>BY {item.ranking.primaryField.toUpperCase()}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Top Performer Snippet */}
+        <View style={styles.topRankerBox}>
+          {item.topEntry ? (
+            <View style={styles.topRankerContent}>
+              <View style={styles.topRankerLeft}>
+                <View style={styles.crownWrap}>
+                  <Ionicons name="trophy" size={12} color="#facc15" />
+                </View>
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={styles.topRankerLabel}>RANK #1 LEADER</Text>
+                  <Text style={styles.topRankerName} numberOfLines={1}>{item.topEntry.name}</Text>
+                </View>
+              </View>
+              <Text style={styles.topRankerScore}>
+                {typeof item.topEntry.cgpa === 'number' ? `${item.topEntry.cgpa.toFixed(2)} CGPA` : `${item.topEntry.marks} Marks`}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.topRankerEmpty}>
+              <Text style={styles.topRankerEmptyText}>Awaiting first submission</Text>
+              <Text style={styles.topRankerEmptyAction}>Be #1 &rarr;</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.cardFooter}>
@@ -414,8 +453,40 @@ const styles = StyleSheet.create({
   statusTextLive: { color: '#4ade80' },
   statusTextDown: { color: '#f87171' },
   cardName: { color: '#e5e7eb', fontSize: 20, fontWeight: '900', letterSpacing: -0.3, marginBottom: 8 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  cardMetaText: { color: '#475569', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
+  cardBadges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 },
+  cardMeta: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.03)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+  },
+  cardMetaText: { color: '#94a3b8', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  cardModeBadge: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+  },
+  cardModeText: { color: '#a5b4fc', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  cardFieldBadge: {
+    backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+  },
+  cardFieldText: { color: '#94a3b8', fontSize: 8, fontWeight: '800', letterSpacing: 1 },
+
+  topRankerBox: {
+    backgroundColor: 'rgba(255,255,255,0.02)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12, padding: 10, marginBottom: 14,
+  },
+  topRankerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  topRankerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  crownWrap: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(250, 204, 21, 0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  topRankerLabel: { color: '#facc15', fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginBottom: 2 },
+  topRankerName: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
+  topRankerScore: { color: '#facc15', fontSize: 12, fontWeight: '900', fontFamily: 'monospace' },
+  topRankerEmpty: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 2 },
+  topRankerEmptyText: { color: '#475569', fontSize: 10, fontStyle: 'italic', fontWeight: '600' },
+  topRankerEmptyAction: { color: '#818cf8', fontSize: 10, fontWeight: '800' },
+
   cardFooter: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 12,

@@ -9,6 +9,26 @@ export type Leaderboard = {
   isLive: boolean;
   createdBy: string;
   entryCount?: number;
+  entryMode?: string;
+  ranking?: {
+    mode?: string;
+    primaryField?: string;
+    secondaryField?: string;
+  };
+  verification?: {
+    level?: string;
+    requireIdCard?: boolean;
+    requireGradeCard?: boolean;
+  };
+  topEntry?: {
+    name: string;
+    cgpa?: number | null;
+    sgpa?: number | null;
+    marks?: number | null;
+    rankingScore?: number | null;
+    userPicture?: string;
+    verificationStatus?: string;
+  } | null;
 };
 
 export type LeaderboardEntry = {
