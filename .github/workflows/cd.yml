@@ -50,8 +50,10 @@ jobs:
           fi
 
       - name: Verify Backend Health
+        env:
+          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL }}
         run: |
-          BACKEND_URL="${{ secrets.PRODUCTION_API_URL || 'https://leaderboard-backend-3pek.onrender.com' }}"
+          BACKEND_URL="${PRODUCTION_API_URL:-https://leaderboard-backend-3pek.onrender.com}"
           echo "Checking backend health at ${BACKEND_URL}/health..."
           for i in {1..12}; do
             STATUS=$(curl -s "${BACKEND_URL}/health" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "DOWN")
