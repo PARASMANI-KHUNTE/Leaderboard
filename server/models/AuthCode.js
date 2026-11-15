@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const AuthCodeSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   codeHash: { type: String, required: true, index: true },
-  expiresAt: { type: Date, required: true, index: true },
+  expiresAt: { type: Date, required: true },
   used: { type: Boolean, default: false, index: true },
 }, { timestamps: true });
 
