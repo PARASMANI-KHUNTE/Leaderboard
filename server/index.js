@@ -21,6 +21,14 @@ const cookie = require('cookie');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Crash prevention: log unhandled rejections and exceptions rather than abruptly aborting the process
+process.on('unhandledRejection', (reason) => {
+    console.error('[server] Unhandled Promise Rejection:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('[server] Uncaught Exception:', err?.message || err);
+});
+
 const app = express();
 const server = http.createServer(app);
 
