@@ -26,12 +26,7 @@ export default function RealtimeProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     userIdRef.current = user?.id ?? null;
     setSocketAuthToken(token ?? null);
-
-    if (socket && socket.connected) {
-      socket.disconnect();
-      socket.connect();
-    }
-  }, [socket, token, user?.id]);
+  }, [token, user?.id]);
 
   useEffect(() => {
     // One-time connect + room rejoin.
@@ -62,7 +57,8 @@ export default function RealtimeProvider({ children }: { children: React.ReactNo
     s.on('leaderboardDeleted', onLeaderboardDeleted);
     s.on('leaderboardStatusUpdated', onLeaderboardStatusUpdated);
 
-    s.connect();
+    // connectSocket() can be safely called multiple times
+    if (!s.connected) s.connect();
 
     return () => {
       s.off('connect', handleConnect);

@@ -6,6 +6,13 @@ import axios from 'axios';
 import API_URL from '../config';
 import confetti from 'canvas-confetti';
 
+const METRIC_LABELS = {
+    cgpa: 'CGPA',
+    sgpa: 'SGPA',
+    marks: 'Marks',
+    rankingScore: 'Score',
+};
+
 const ProfileImage = ({ src, alt, size = "w-10 h-10" }) => {
     const [error, setError] = React.useState(false);
     if (!src || error) {
@@ -26,9 +33,10 @@ const ProfileImage = ({ src, alt, size = "w-10 h-10" }) => {
     );
 };
 
-const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreatorId, onOpenReport }) => {
+const LeaderboardTable = ({ entries, loading, leaderboard, onEdit, onDelete, leaderboardCreatorId, onOpenReport }) => {
     const { user } = useAuth();
     const { showAlert } = useModal();
+    const primaryField = leaderboard?.ranking?.primaryField || 'cgpa';
 
     useEffect(() => {
         if (entries.length > 0 && !loading) {
@@ -122,7 +130,7 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                     <tr className="border-b border-white/5 bg-white/2">
                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Rank</th>
                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Student</th>
-                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">CGPA</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">{METRIC_LABELS[primaryField] || 'Score'}</th>
                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Social</th>
                         <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
                     </tr>
@@ -133,14 +141,14 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                         let isTie = false;
                         if (index > 0) {
                             const prev = entries[index - 1];
-                            if (entry.cgpa === prev.cgpa && entry.marks === prev.marks) {
+                            if ((entry[primaryField] ?? entry.cgpa) === (prev[primaryField] ?? prev.cgpa) && entry.marks === prev.marks) {
                                 isTie = true;
                             }
                         }
 
                         // Determine if next is also a tie (for visual grouping)
                         const isTieWithNext = index < entries.length - 1 &&
-                            entry.cgpa === entries[index + 1].cgpa &&
+                            (entry[primaryField] ?? entry.cgpa) === (entries[index + 1][primaryField] ?? entries[index + 1].cgpa) &&
                             entry.marks === entries[index + 1].marks;
 
                         const rowRank = typeof entry.rank === 'number' ? entry.rank : null;
@@ -189,6 +197,9 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                                                 ) : (
                                                     <span className="text-[8px] font-black bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded uppercase tracking-tighter">PASS</span>
                                                 )}
+                                                {entry.verificationStatus === 'verified' && (
+                                                    <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded uppercase tracking-tighter">VERIFIED</span>
+                                                )}
                                                 {isTie && (
                                                     <span className="text-[8px] font-black bg-white/10 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">TIED</span>
                                                 )}
@@ -211,10 +222,12 @@ const LeaderboardTable = ({ entries, loading, onEdit, onDelete, leaderboardCreat
                                         ) : (
                                             <>
                                                 <span className={`font-mono font-black text-lg ${index === 0 ? 'text-yellow-400' : 'text-indigo-400'}`}>
-                                                    {entry.cgpa.toFixed(2)}
+                                                    {typeof entry[primaryField] === 'number'
+                                                        ? entry[primaryField].toFixed(primaryField === 'marks' ? 0 : 2)
+                                                        : (entry.cgpa ?? 0).toFixed(2)}
                                                 </span>
                                                 <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">
-                                                    CGPA{entry.marks ? ` | ${entry.marks} Marks` : ''}
+                                                    {METRIC_LABELS[primaryField] || 'Score'}{entry.marks ? ` | ${entry.marks} Marks` : ''}
                                                 </span>
                                             </>
                                         )}

@@ -64,3 +64,5 @@ ehthumbs.db
 # AI / IDE assistant temporary directories
 .kilo/
 .kilocode/
+/test
+eng.traineddata

@@ -3,7 +3,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { io } from 'socket.io-client';
+import { getSocket, connectSocket, disconnectSocket } from '../realtime/socketSingleton';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { API_URL } from '../config/env';
@@ -119,16 +119,19 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!user?.id) return;
 
-    const socket = io(API_URL, {
-      auth: token ? { token } : {},
-    });
+    const socket = getSocket();
     
-    socket.on('connect', () => {
+    // AuthProvider manages socket connections natively because it holds the user lifecycle.
+    connectSocket();
+
+    const onConnect = () => {
       socket.emit('joinUser', user.id);
       if (user.isAdmin) {
         socket.emit('joinAdmin');
       }
-    });
+    };
+
+    socket.on('connect', onConnect);
 
     socket.on('connect_error', (err) => {
       // optional: Handle connection error silently or track metrics
@@ -156,7 +159,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }
     });
 
-    return () => { socket.disconnect(); };
+    return () => { 
+      socket.off('connect', onConnect);
+      socket.off('connect_error');
+      socket.off('globalNotification');
+      disconnectSocket(); 
+    };
   }, [token, user?.id]);
 
   // Request Permissions & Register Push
