@@ -52,6 +52,8 @@ const FeedbackSchema = new mongoose.Schema({
     isRead: { type: Boolean, default: false }
 }, { timestamps: true });
 
+UserSchema.index({ isBanned: 1 });
+
 const User = mongoose.model('User', UserSchema);
 const Report = mongoose.model('Report', ReportSchema);
 const Feedback = mongoose.model('Feedback', FeedbackSchema);

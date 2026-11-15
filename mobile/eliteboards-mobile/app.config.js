@@ -22,7 +22,7 @@ function getEnvUrl() {
 export default ({ config }) => {
   const envUrl = getEnvUrl();
   
-  if (!envUrl) {
+  if (!envUrl && process.env.NODE_ENV === 'production') {
     throw new Error('EXPO_PUBLIC_API_URL must be set in .env file for production builds');
   }
   
@@ -42,7 +42,7 @@ export default ({ config }) => {
     },
     extra: {
       ...config.extra,
-      API_URL: envUrl,
+      API_URL: envUrl || 'https://leaderboard-backend-3pek.onrender.com',
     },
   };
 };

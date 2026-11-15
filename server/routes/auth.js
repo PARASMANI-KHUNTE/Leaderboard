@@ -6,6 +6,63 @@ const router = express.Router();
 const { getRedisClient, bumpVersion } = require('../config/redis');
 const { auth } = require('../middleware/auth');
 
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+
+function getStateSecret() {
+    return process.env.SESSION_SECRET || process.env.JWT_SECRET;
+}
+
+function createOAuthState(payload) {
+    const encodedPayload = Buffer.from(JSON.stringify({
+        ...payload,
+        issuedAt: Date.now(),
+    })).toString('base64url');
+    const signature = crypto
+        .createHmac('sha256', getStateSecret())
+        .update(encodedPayload)
+        .digest('base64url');
+    return `${encodedPayload}.${signature}`;
+}
+
+function parseOAuthState(state) {
+    if (!state || typeof state !== 'string') return null;
+    const [encodedPayload, signature] = state.split('.');
+    if (!encodedPayload || !signature || !getStateSecret()) return null;
+
+    const expectedSignature = crypto
+        .createHmac('sha256', getStateSecret())
+        .update(encodedPayload)
+        .digest('base64url');
+    if (
+        signature.length !== expectedSignature.length ||
+        !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))
+    ) {
+        return null;
+    }
+
+    try {
+        const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+        if (!payload.issuedAt || Date.now() - payload.issuedAt > OAUTH_STATE_MAX_AGE_MS) {
+            return null;
+        }
+        return payload;
+    } catch {
+        return null;
+    }
+}
+
+function getSafeMobileRedirect(url) {
+    const fallback = process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
+    const candidate = String(url || fallback).trim();
+    try {
+        const parsed = new URL(candidate);
+        const allowed = parsed.protocol === 'eliteboards:' || parsed.protocol === 'exp:';
+        return allowed ? candidate : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 async function createOneTimeCode(userId) {
     const AuthCode = require('../models/AuthCode');
     const oneTimeCode = crypto.randomBytes(24).toString('hex');
@@ -24,6 +81,9 @@ async function createOneTimeCode(userId) {
 
 router.get('/google',
     (req, res, next) => {
+        if (!getStateSecret()) {
+            return res.status(503).json({ message: 'OAuth is not configured on this server' });
+        }
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
         const forwardedProto = req.headers['x-forwarded-proto'];
         const proto = forwardedProto
@@ -39,7 +99,7 @@ router.get('/google',
         // Encode platform + mobile redirect URL into the state param.
         // Google passes state back to the callback unchanged — reliable unlike sessions.
         const statePayload = { platform, redirectUrl: req.query.redirect || null };
-        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64url');
+        const state = createOAuthState(statePayload);
 
         passport.authenticate('google', {
             scope: ['profile', 'email'],
@@ -67,19 +127,12 @@ router.get('/google/callback',
     },
     async (req, res) => {
         try {
-            // Decode state payload (base64url JSON: { platform, redirectUrl })
-            // Falls back to legacy plain-text state for backwards compatibility.
-            let platform = 'web';
-            let mobileRedirectUrl = null;
-            try {
-                const stateRaw = req.query?.state || '';
-                const decoded = JSON.parse(Buffer.from(stateRaw, 'base64url').toString());
-                platform = decoded.platform || 'web';
-                mobileRedirectUrl = decoded.redirectUrl || null;
-            } catch {
-                // Legacy: state was just the platform string
-                platform = req.query?.state === 'mobile' ? 'mobile' : 'web';
+            const state = parseOAuthState(req.query?.state);
+            if (!state) {
+                return res.status(400).json({ message: 'Invalid or expired OAuth state' });
             }
+            const platform = state.platform === 'mobile' ? 'mobile' : 'web';
+            const mobileRedirectUrl = state.redirectUrl;
 
             console.log(`[OAuth Callback] platform=${platform} user=${req.user?._id} redirectUrl=${mobileRedirectUrl}`);
 
@@ -90,7 +143,7 @@ router.get('/google/callback',
             }
 
             // Use client's dynamic redirect URL from state, fall back to env var for production standalone
-            const deepLinkBase = mobileRedirectUrl || process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
+            const deepLinkBase = getSafeMobileRedirect(mobileRedirectUrl);
             console.log(`[OAuth Callback] Redirecting mobile user to deep link: ${deepLinkBase}`);
             return res.redirect(`${deepLinkBase}?code=${encodeURIComponent(oneTimeCode)}`);
         } catch (err) {
@@ -147,7 +200,13 @@ router.post('/exchange', async (req, res) => {
 
 router.get('/logout', (req, res) => {
     req.logout(() => {
-        res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.clearCookie('token', {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            path: '/',
+        });
         res.redirect(process.env.CLIENT_URL);
     });
 });

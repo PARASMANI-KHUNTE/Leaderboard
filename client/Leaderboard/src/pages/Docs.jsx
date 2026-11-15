@@ -6,17 +6,12 @@ import {
   Cpu, 
   Smartphone, 
   Zap, 
-  Shield, 
+  Shield,
   Globe, 
   Database, 
   Server, 
   Code2, 
-  ChevronRight, 
-  ExternalLink,
   Terminal,
-  Activity,
-  UserCheck,
-  Bell,
   Workflow
 } from 'lucide-react';
 
@@ -37,7 +32,7 @@ const TechCard = ({ title, items, icon: Icon, color }) => (
     className="bg-slate-900/40 border border-white/5 p-6 rounded-2xl hover:border-indigo-500/30 transition-colors group"
   >
     <div className={`w-12 h-12 rounded-xl bg-${color}-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-      <Icon className={`w-6 h-6 text-${color}-400`} />
+      {React.createElement(Icon, { className: `w-6 h-6 text-${color}-400` })}
     </div>
     <h3 className="text-lg font-bold text-white mb-3 tracking-tight">{title}</h3>
     <ul className="space-y-2">
@@ -100,7 +95,7 @@ const Docs = () => {
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              {React.createElement(Icon, { className: 'w-4 h-4' })}
               {title}
             </button>
           ))}

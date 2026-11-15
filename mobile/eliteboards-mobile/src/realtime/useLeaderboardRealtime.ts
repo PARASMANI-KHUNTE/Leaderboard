@@ -29,10 +29,36 @@ export function useLeaderboardRealtime(leaderboardId?: string) {
       }, 500);
     };
 
+    const reactionHandler = (payload: any) => {
+      const { entryId, likedBy, dislikedBy, leaderboardId: targetLbId } = payload || {};
+      if (!entryId) return;
+      if (targetLbId && String(targetLbId) !== String(leaderboardId)) return;
+
+      queryClient.setQueriesData({ queryKey: ['leaderboardEntries', String(leaderboardId)] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        if (Array.isArray(oldData.pages)) {
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) => ({
+              ...page,
+              items: (page.items || []).map((item: any) =>
+                String(item._id) === String(entryId)
+                  ? { ...item, likedBy: likedBy || item.likedBy, dislikedBy: dislikedBy || item.dislikedBy }
+                  : item
+              ),
+            })),
+          };
+        }
+        return oldData;
+      });
+    };
+
     socket.on('leaderboardChanged', handler);
+    socket.on('entryReactionUpdated', reactionHandler);
 
     return () => {
       socket.off('leaderboardChanged', handler);
+      socket.off('entryReactionUpdated', reactionHandler);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     };

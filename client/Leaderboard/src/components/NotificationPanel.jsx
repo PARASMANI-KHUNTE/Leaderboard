@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
-import { io } from 'socket.io-client';
+import { getSocket } from '../utils/socketSingleton';
 import { useAuth } from '../App';
 import { useToast } from './Toast';
-import API_URL from '../config';
 
 const NotificationPanel = () => {
     const { user } = useAuth();
@@ -11,24 +10,31 @@ const NotificationPanel = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = io(API_URL, {
-            withCredentials: true,
-        });
+        const socket = getSocket();
 
         socket.emit('joinUser', user.id);
 
-        socket.on('globalNotification', (notif) => {
+        const handleGlobalNotification = (notif) => {
             addToast(notif.message, notif.type);
-        });
+        };
+
+        const handleNewReport = ({ reason, entryName }) => {
+            addToast(`New report: ${reason} on ${entryName}`, 'info');
+        };
+
+        socket.on('globalNotification', handleGlobalNotification);
 
         if (user.isAdmin) {
             socket.emit('joinAdmin');
-            socket.on('newReport', ({ reason, entryName }) => {
-                addToast(`New report: ${reason} on ${entryName}`, 'info');
-            });
+            socket.on('newReport', handleNewReport);
         }
 
-        return () => socket.disconnect();
+        return () => {
+            socket.off('globalNotification', handleGlobalNotification);
+            if (user.isAdmin) {
+                socket.off('newReport', handleNewReport);
+            }
+        };
     }, [user, addToast]);
 
     return null;

@@ -1,43 +1,41 @@
-# Testing and CI
+# Testing & Verification Guide
 
-## Root Command
+## Root Commands
 
-Run all major verification steps from the repository root:
+You can run full verification suites from the repository root:
 
 ```bash
+# Run all automated tests across Server, Web, and Mobile
 npm test
+
+# Run syntax and lint checks across the entire workspace
+npm run lint
+
+# Run TypeScript typechecks across the workspace
+npm run typecheck
+
+# Build and export production bundles
+npm run build
+
+# Clean temporary build artifacts
+npm run clean
 ```
 
-This fans out to:
+---
 
-- `server`: syntax checks plus backend tests
-- `client/Leaderboard`: lint plus production build
-- `mobile/eliteboards-mobile`: typecheck, Expo config validation, and Expo doctor
+## Workspace Test Matrix
 
-## Server Coverage
+| Subproject | Command | Test Scope |
+| :--- | :--- | :--- |
+| **Server** | `npm --prefix server test` | - Node syntax checks (`node --check`)<br>- JWT token extraction & precedence<br>- Auth middleware permissions & banned user rejection<br>- Leaderboard edit & submission validation<br>- Report and feedback notification pipelines<br>- Duplicate submission handling (`11000` -> `409 Conflict`)<br>- Atomic reaction toggles & targeted socket notifications<br>- High-concurrency 20-worker mutex stress test<br>- High-concurrency 50-worker atomic reaction set integrity<br>- Redis $O(\log N)$ composite score ranking calculations |
+| **Web** | `npm --prefix client/Leaderboard run check` | - ESLint rules compliance<br>- Vite production bundling & code chunking |
+| **Mobile** | `npm --prefix mobile/eliteboards-mobile run typecheck && npm --prefix mobile/eliteboards-mobile run doctor` | - TypeScript static typecheck (`tsc --noEmit`)<br>- Expo public configuration validation<br>- Expo Doctor 20-point diagnostic check<br>- Hermes engine bytecode bundle export validation |
 
-The backend test suite currently covers:
+---
 
-- token extraction precedence
-- auth middleware success and rejection paths
-- banned-user rejection
-- leaderboard edit payload validation
-- report submission validation and notification emission
-- feedback submission validation and notification emission
+## Continuous Integration & Deployment
 
-## CI
-
-GitHub Actions runs the same verification paths in `.github/workflows/ci.yml`.
-
-## What Is Not Covered Yet
-
-- full browser E2E tests
-- database-backed route integration tests
-- mobile UI tests
-- visual regression tests
-
-## Recommended Testing Expansion
-
-1. Add Playwright for web login and leaderboard submission flows.
-2. Add API integration tests against a disposable MongoDB instance.
-3. Add release smoke tests for OTA preview updates.
+- Automated CI pipeline: [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml)
+- Automated CD pipeline: [`.github/workflows/cd.yml`](file:///.github/workflows/cd.yml)
+- CodeQL security scan: [`.github/workflows/security.yml`](file:///.github/workflows/security.yml)
+- Detailed pipeline architecture guide: [`docs/ci-cd.md`](file:///docs/ci-cd.md)
