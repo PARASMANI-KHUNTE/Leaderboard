@@ -4,6 +4,8 @@ const Leaderboard = require('../models/LeaderboardCollection');
 const LeaderboardEntry = require('../models/Leaderboard');
 const VerificationSubmission = require('../models/VerificationSubmission');
 const { auth } = require('../middleware/auth');
+const { validateObjectId } = require('../middleware/validation');
+const { syncEntryToZSet } = require('../utils/redisRanking');
 const { compareDocuments } = require('../utils/verification');
 const { buildEntryRankingPayload } = require('../utils/ranking');
 const {
@@ -345,9 +347,15 @@ router.post(
             submission.resultingEntryId = entry._id;
             await submission.save();
 
+            // Increment entryCount atomically on the leaderboard collection
+            await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: 1 } }).catch(() => {});
+
             const { getRedisClient, bumpVersion } = require('../config/redis');
-            const redisClient = await getRedisClient();
-            if (redisClient) await bumpVersion(redisClient, `lb:${leaderboardId}:version`);
+            const redisClient = await getRedisClient().catch(() => null);
+            if (redisClient) {
+                await syncEntryToZSet(redisClient, leaderboardId, entry).catch(() => {});
+                await bumpVersion(redisClient, `lb:${leaderboardId}:version`).catch(() => {});
+            }
 
             const io = req.app.get('socketio');
             io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
@@ -359,6 +367,9 @@ router.post(
             });
         } catch (err) {
             console.error('[verification submit-final] failed', err);
+            if (err.code === 11000) {
+                return res.status(409).json({ message: 'You have already made an entry in this leaderboard' });
+            }
             const statusCode = err?.http_code || err?.statusCode || err?.status || 500;
             const safeStatus = statusCode >= 400 && statusCode < 600 ? statusCode : 500;
             res.status(safeStatus).json({ message: err.message || 'Verification submission failed' });
@@ -366,7 +377,7 @@ router.post(
     }
 );
 
-router.get('/mine/:leaderboardId', auth, async (req, res) => {
+router.get('/mine/:leaderboardId', auth, validateObjectId('leaderboardId'), async (req, res) => {
     try {
         const submissions = await VerificationSubmission.find({
             userId: req.user._id,

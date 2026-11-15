@@ -81,8 +81,8 @@ async function createOneTimeCode(userId) {
 
 router.get('/google',
     (req, res, next) => {
-        if (!getStateSecret()) {
-            return res.status(503).json({ message: 'OAuth is not configured on this server' });
+        if (!getStateSecret() || !process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+            return res.status(503).json({ message: 'Google OAuth is not configured on this server' });
         }
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
         const forwardedProto = req.headers['x-forwarded-proto'];
@@ -110,6 +110,9 @@ router.get('/google',
 
 router.get('/google/callback',
     (req, res, next) => {
+        if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+            return res.status(503).json({ message: 'Google OAuth is not configured on this server' });
+        }
         const forwardedProto = req.headers['x-forwarded-proto'];
         const proto = forwardedProto
             ? String(forwardedProto).split(',')[0].trim()

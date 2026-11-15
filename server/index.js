@@ -9,7 +9,8 @@ const passport = require('passport');
 const session = require('express-session');
 const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('./config/passport');
 const connectDB = require('./config/db');
 const { initRedis } = require('./config/redis');
@@ -259,9 +260,10 @@ const start = async () => {
         const redisStatus = getRedisStatus();
         const hasRedisConfigured = redisStatus.enabled;
         const redisReady = !hasRedisConfigured || redisStatus.connected;
-        const status = dbReady && redisReady ? 'UP' : 'DEGRADED';
+        const status = dbReady ? (redisReady ? 'UP' : 'DEGRADED') : 'DOWN';
 
-        res.status(status === 'UP' ? 200 : 503).json({
+        // Return HTTP 200 as long as primary database is UP (even if optional Redis cache is DEGRADED)
+        res.status(dbReady ? 200 : 503).json({
             status,
             timestamp: new Date().toISOString(),
             uptimeSeconds: Math.round(process.uptime()),
