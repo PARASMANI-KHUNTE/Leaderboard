@@ -180,8 +180,8 @@ router.get('/:leaderboardId', async (req, res) => {
                     $addFields: {
                         tieScore: {
                             $add: [
-                                { $multiply: [{ $ifNull: [`${primaryField}`, 0] }, 1000000] },
-                                { $ifNull: [`${secondaryField}`, 0] },
+                                { $multiply: [{ $ifNull: ['$' + primaryField, 0] }, 1000000] },
+                                { $ifNull: ['$' + secondaryField, 0] },
                             ],
                         },
                     },
