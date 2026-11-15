@@ -3,7 +3,7 @@ import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
-import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity } from 'lucide-react';
+import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity, Crown, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getSocket } from '../utils/socketSingleton';
 
@@ -243,14 +243,60 @@ const Landing = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors uppercase font-mono">
+                                    <h3 className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors uppercase font-mono line-clamp-1">
                                         {lb.name}
                                     </h3>
-                                    <div className="flex items-center gap-2">
-                                        <Users className="w-3.5 h-3.5 text-slate-500" />
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-                                            {lb.entryCount || 0} Submissions
-                                        </span>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg border border-white/5">
+                                            <Users className="w-3 h-3 text-slate-400" />
+                                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">
+                                                {lb.entryCount || 0} Submissions
+                                            </span>
+                                        </div>
+                                        {lb.entryMode && (
+                                            <span className="px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-[9px] font-black text-indigo-300 uppercase tracking-widest">
+                                                {lb.entryMode === 'upload' ? 'Doc Verified' : lb.entryMode === 'hybrid' ? 'Hybrid' : 'Direct Entry'}
+                                            </span>
+                                        )}
+                                        {lb.ranking?.primaryField && (
+                                            <span className="px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                By {lb.ranking.primaryField}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Top Ranker Preview Snippet */}
+                                    <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl">
+                                        {lb.topEntry ? (
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className="relative flex-shrink-0">
+                                                        {lb.topEntry.userPicture ? (
+                                                            <img src={lb.topEntry.userPicture} alt={lb.topEntry.name} className="w-8 h-8 rounded-full border border-yellow-500/40 object-cover" referrerPolicy="no-referrer" />
+                                                        ) : (
+                                                            <div className="w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 text-xs font-bold font-mono">
+                                                                {lb.topEntry.name?.charAt(0) || '#'}
+                                                            </div>
+                                                        )}
+                                                        <Crown className="w-3.5 h-3.5 text-yellow-400 absolute -top-1.5 -right-1" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[9px] font-black uppercase tracking-widest text-yellow-400 leading-none mb-1">Rank #1 Leader</p>
+                                                        <p className="text-xs font-bold text-white truncate font-mono">{lb.topEntry.name}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <span className="text-xs font-black font-mono text-yellow-400">
+                                                        {typeof lb.topEntry.cgpa === 'number' ? `${lb.topEntry.cgpa.toFixed(2)} CGPA` : `${lb.topEntry.marks} Marks`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between text-slate-500 py-1">
+                                                <span className="text-[10px] font-bold uppercase tracking-widest italic">Awaiting first submission</span>
+                                                <span className="text-[10px] font-mono font-bold text-indigo-400/80">Be #1 &rarr;</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="mt-8 flex items-center justify-between text-slate-500 group-hover:text-slate-300">

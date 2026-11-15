@@ -80,10 +80,45 @@ router.get('/', async (req, res) => {
             .limit(limit)
             .lean();
 
-        // Use direct entryCount property (eliminates N+1 countDocuments queries)
+        // Single aggregation to fetch the #1 ranker for each board (avoids N+1 queries)
+        const lbIdsWithEntries = leaderboards.map((lb) => lb._id);
+        let topEntriesByBoard = {};
+        if (lbIdsWithEntries.length > 0) {
+            try {
+                const topEntries = await LeaderboardEntry.aggregate([
+                    { $match: { leaderboardId: { $in: lbIdsWithEntries } } },
+                    { $sort: { rankingScore: -1, createdAt: 1 } },
+                    {
+                        $group: {
+                            _id: '$leaderboardId',
+                            topEntry: {
+                                $first: {
+                                    name: '$name',
+                                    cgpa: '$cgpa',
+                                    sgpa: '$sgpa',
+                                    marks: '$marks',
+                                    rankingScore: '$rankingScore',
+                                    userPicture: '$userPicture',
+                                    verificationStatus: '$verificationStatus',
+                                },
+                            },
+                        },
+                    },
+                ]);
+                topEntriesByBoard = topEntries.reduce((acc, curr) => {
+                    acc[String(curr._id)] = curr.topEntry;
+                    return acc;
+                }, {});
+            } catch (aggErr) {
+                console.warn('[leaderboards] failed to fetch top entries aggregation', aggErr.message);
+            }
+        }
+
+        // Use direct entryCount property (eliminates N+1 countDocuments queries) + attach topEntry
         const enhancedLeaderboards = leaderboards.map((lb) => ({
             ...lb,
             entryCount: typeof lb.entryCount === 'number' && lb.entryCount >= 0 ? lb.entryCount : 0,
+            topEntry: topEntriesByBoard[String(lb._id)] || null,
         }));
 
         res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
