@@ -1,0 +1,9 @@
+{
+  "github-actions.workflows.pinnedContexts": {
+    "secrets": [
+      "RENDER_DEPLOY_HOOK_URL",
+      "PRODUCTION_API_URL",
+      "EXPO_TOKEN"
+    ]
+  }
+}
