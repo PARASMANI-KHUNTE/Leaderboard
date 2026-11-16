@@ -79,22 +79,37 @@ async function createOneTimeCode(userId) {
     return oneTimeCode;
 }
 
+function getOAuthCallbackURL(req) {
+    if (process.env.GOOGLE_CALLBACK_URL) {
+        return process.env.GOOGLE_CALLBACK_URL;
+    }
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const proto = forwardedProto
+        ? String(forwardedProto).split(',')[0].trim()
+        : req.protocol;
+    let host = req.get('host') || 'localhost:5000';
+
+    // Android emulator sends host as 10.0.2.2:<port> (virtual alias for host loopback).
+    // Google OAuth strictly forbids private RFC 1918 IPs in redirect_uri parameters.
+    // Rewrite 10.0.2.2 -> localhost so Google receives an authorized loopback redirect URI.
+    if (host.startsWith('10.0.2.2')) {
+        host = host.replace('10.0.2.2', 'localhost');
+    }
+
+    const hostname = host.split(':')[0].toLowerCase();
+    const isRenderHost = hostname === 'onrender.com' || hostname.endsWith('.onrender.com');
+    const safeProto = proto === 'http' && isRenderHost ? 'https' : proto;
+
+    return `${safeProto}://${host}/auth/google/callback`;
+}
+
 router.get('/google',
     (req, res, next) => {
         if (!getStateSecret() || !process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
             return res.status(503).json({ message: 'Google OAuth is not configured on this server' });
         }
         const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
-        const forwardedProto = req.headers['x-forwarded-proto'];
-        const proto = forwardedProto
-            ? String(forwardedProto).split(',')[0].trim()
-            : req.protocol;
-        const host = req.get('host');
-        const safeProto =
-            proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
-        const callbackURL =
-            process.env.GOOGLE_CALLBACK_URL ||
-            `${safeProto}://${host}/auth/google/callback`;
+        const callbackURL = getOAuthCallbackURL(req);
         
         // Encode platform + mobile redirect URL into the state param.
         // Google passes state back to the callback unchanged — reliable unlike sessions.
@@ -113,15 +128,7 @@ router.get('/google/callback',
         if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
             return res.status(503).json({ message: 'Google OAuth is not configured on this server' });
         }
-        const forwardedProto = req.headers['x-forwarded-proto'];
-        const proto = forwardedProto
-            ? String(forwardedProto).split(',')[0].trim()
-            : req.protocol;
-        const host = req.get('host');
-        const safeProto =
-            proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
-
-        const callbackURL = process.env.GOOGLE_CALLBACK_URL || `${safeProto}://${host}/auth/google/callback`;
+        const callbackURL = getOAuthCallbackURL(req);
 
         passport.authenticate('google', { 
             failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
@@ -342,5 +349,7 @@ router.delete('/delete-account', auth, async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+router.getOAuthCallbackURL = getOAuthCallbackURL;
 
 module.exports = router;
