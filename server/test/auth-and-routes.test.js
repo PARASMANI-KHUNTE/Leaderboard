@@ -59,15 +59,24 @@ function createApp(routePath, handlers, { socketio } = {}) {
     return app;
 }
 
-test('getTokenFromRequest prefers bearer token over cookie token', () => {
+test('getTokenFromRequest extracts bearer token from authorization header', () => {
     const req = {
-        header: () => 'Bearer bearer-token',
-        cookies: { token: 'cookie-token' },
+        header: (name) => (name?.toLowerCase() === 'authorization' ? 'Bearer bearer-token' : null),
     };
 
     const token = authModule.getTokenFromRequest(req);
 
     assert.equal(token, 'bearer-token');
+});
+
+test('getTokenFromRequest returns null when authorization header is absent', () => {
+    const req = {
+        header: () => null,
+    };
+
+    const token = authModule.getTokenFromRequest(req);
+
+    assert.equal(token, null);
 });
 
 test('getOAuthCallbackURL normalizes Android emulator IP (10.0.2.2) to localhost', () => {
