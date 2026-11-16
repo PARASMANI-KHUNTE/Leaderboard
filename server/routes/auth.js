@@ -96,8 +96,9 @@ function getOAuthCallbackURL(req) {
         host = host.replace('10.0.2.2', 'localhost');
     }
 
-    const safeProto =
-        proto === 'http' && host && host.includes('onrender.com') ? 'https' : proto;
+    const hostname = host.split(':')[0].toLowerCase();
+    const isRenderHost = hostname === 'onrender.com' || hostname.endsWith('.onrender.com');
+    const safeProto = proto === 'http' && isRenderHost ? 'https' : proto;
 
     return `${safeProto}://${host}/auth/google/callback`;
 }
