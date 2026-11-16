@@ -77,9 +77,21 @@ const Boards = () => {
         }
     };
 
-    const handleToggleStatus = async (id, e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleToggleStatus = async (id, isCurrentlyLive, e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        const action = isCurrentlyLive ? 'Set to Maintenance?' : 'Set Leaderboard Live?';
+        const msg = isCurrentlyLive
+            ? 'Putting this leaderboard into maintenance mode will pause student submissions and edits.'
+            : 'Making this leaderboard live will allow students to submit scores again.';
+        const confirmBtn = isCurrentlyLive ? 'Pause Submissions' : 'Set Live';
+        const confirmColor = isCurrentlyLive ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-emerald-600 hover:bg-emerald-500';
+
+        const confirmed = await showConfirm(action, msg, confirmBtn, confirmColor);
+        if (!confirmed) return;
 
         try {
             await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {});
@@ -170,11 +182,11 @@ const Boards = () => {
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
                                                     )}
-                                                    {user?.isAdmin && (
+                                                    {(user?.isAdmin || user?.id === lb.createdBy) && (
                                                         <button
-                                                            onClick={(e) => handleToggleStatus(lb._id, e)}
+                                                            onClick={(e) => handleToggleStatus(lb._id, lb.isLive, e)}
                                                             className={`p-1.5 rounded-lg transition-all border ${lb.isLive ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20'}`}
-                                                            title={lb.isLive ? "Set Maintenance" : "Set Live"}
+                                                            title={lb.isLive ? "Set Maintenance (Pause)" : "Set Live"}
                                                         >
                                                             {lb.isLive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                                                         </button>

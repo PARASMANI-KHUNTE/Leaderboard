@@ -332,7 +332,27 @@ export default function LeaderboardScreen() {
                   <>
                     <Pressable
                       style={[s.topActionBtn, effectiveLeaderboard?.isLive ? s.topBtnWarn : s.topBtnGreen]}
-                      onPress={() => toggleBoardStatus.mutate(String(effectiveLeaderboard?._id))}
+                      onPress={() => {
+                        const isLive = effectiveLeaderboard?.isLive;
+                        const action = isLive ? 'Pause' : 'Resume';
+                        const msg = isLive
+                          ? 'Put this leaderboard into maintenance mode? Submissions will be paused.'
+                          : 'Make this leaderboard live? Students will be able to submit scores.';
+                        Alert.alert(`${action} Leaderboard?`, msg, [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: action,
+                            style: isLive ? 'destructive' : 'default',
+                            onPress: () => {
+                              toggleBoardStatus.mutate(String(effectiveLeaderboard?._id), {
+                                onError: (err: any) => {
+                                  Alert.alert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status');
+                                },
+                              });
+                            },
+                          },
+                        ]);
+                      }}
                     >
                       <Ionicons 
                         name={effectiveLeaderboard?.isLive ? "pause" : "play"} 
@@ -340,7 +360,7 @@ export default function LeaderboardScreen() {
                         color={effectiveLeaderboard?.isLive ? "#eab308" : "#22c55e"} 
                       />
                       <Text style={[s.topActionText, { marginLeft: 4 }]}>
-                        {effectiveLeaderboard?.isLive ? 'DOWN' : 'LIVE'}
+                        {effectiveLeaderboard?.isLive ? 'MAINTENANCE' : 'LIVE'}
                       </Text>
                     </Pressable>
                     <Pressable

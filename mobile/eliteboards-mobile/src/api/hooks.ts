@@ -160,7 +160,18 @@ export function useCreateLeaderboard() {
 
   return useMutation({
     mutationFn: async (payload: { name: string }) => (await api.post('/api/leaderboards/create', payload)).data,
-    onSuccess: () => {
+    onSuccess: (newBoard) => {
+      queryClient.setQueryData(['leaderboards'], (old: any) => {
+        if (!old) return [newBoard];
+        if (Array.isArray(old)) {
+          if (old.some(b => String(b._id) === String(newBoard._id))) return old;
+          return [newBoard, ...old];
+        }
+        return {
+          ...old,
+          leaderboards: [newBoard, ...(old.leaderboards || [])],
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['leaderboards'] });
     },
   });
@@ -172,8 +183,28 @@ export function useToggleLeaderboardStatus() {
 
   return useMutation({
     mutationFn: async (id: string) => (await api.post(`/api/leaderboards/toggle-status/${id}`)).data,
-    onSuccess: () => {
+    onSuccess: (updatedBoard) => {
+      queryClient.setQueryData(['leaderboards'], (old: any) => {
+        if (!old) return old;
+        const patch = (b: any) => (String(b._id) === String(updatedBoard._id) ? { ...b, isLive: updatedBoard.isLive } : b);
+        if (Array.isArray(old)) {
+          return old.map(patch);
+        }
+        return {
+          ...old,
+          leaderboards: (old.leaderboards || []).map(patch),
+        };
+      });
+      if (updatedBoard?.slug) {
+        queryClient.setQueryData(['leaderboardBySlug', updatedBoard.slug], (old: any) => {
+          if (!old) return old;
+          return { ...old, isLive: updatedBoard.isLive };
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['leaderboards'] });
+      if (updatedBoard?.slug) {
+        queryClient.invalidateQueries({ queryKey: ['leaderboardBySlug', updatedBoard.slug] });
+      }
     },
   });
 }

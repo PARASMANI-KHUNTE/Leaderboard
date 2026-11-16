@@ -186,10 +186,22 @@ const LeaderboardView = () => {
     }, [slug, navigate, showAlert, fetchEntriesPage]);
 
     const handleToggleStatus = async () => {
+        if (!leaderboard) return;
+        const isCurrentlyLive = leaderboard.isLive;
+        const action = isCurrentlyLive ? 'Set to Maintenance?' : 'Set Leaderboard Live?';
+        const msg = isCurrentlyLive
+            ? 'Putting this leaderboard into maintenance mode will pause student submissions and edits.'
+            : 'Making this leaderboard live will allow students to submit scores again.';
+        const confirmBtn = isCurrentlyLive ? 'Pause Submissions' : 'Set Live';
+        const confirmColor = isCurrentlyLive ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-emerald-600 hover:bg-emerald-500';
+
+        const confirmed = await showConfirm(action, msg, confirmBtn, confirmColor);
+        if (!confirmed) return;
+
         try {
             const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${leaderboard._id}`, {});
             setLeaderboard(res.data);
-            showAlert('Updated', `Leaderboard is now ${res.data.isLive ? 'LIVE' : 'DOWN'}`);
+            showAlert('Updated', `Leaderboard is now ${res.data.isLive ? 'LIVE' : 'MAINTENANCE'}`);
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to toggle status');
         }
