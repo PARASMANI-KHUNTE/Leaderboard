@@ -14,21 +14,23 @@ import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../providers/AuthProvider';
 import * as WebBrowser from 'expo-web-browser';
+import { useTheme } from '../theme/ThemeContext';
 
 const { width } = Dimensions.get('window');
-const DRAWER_WIDTH = Math.min(width * 0.82, 330);
+const DRAWER_WIDTH = Math.min(width * 0.82, 320);
 
 interface SidebarDrawerProps {
     visible: boolean;
     onClose: () => void;
-    unreadCount: number;
+    unreadCount?: number;
 }
 
-export default function SidebarDrawer({ visible, onClose, unreadCount }: SidebarDrawerProps) {
+export default function SidebarDrawer({ visible, onClose }: SidebarDrawerProps) {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { colors, isDark } = useTheme();
 
     const navigateTo = (path: string) => {
         onClose();
@@ -61,14 +63,16 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                 {/* Backdrop touch area */}
                 <Pressable style={styles.backdrop} onPress={onClose} />
 
-                {/* Drawer Container */}
+                {/* Drawer Container - covers 100% height without blank spaces */}
                 <View 
                     style={[
                         styles.drawer, 
                         { 
                             width: DRAWER_WIDTH, 
-                            paddingTop: insets.top + 16,
-                            paddingBottom: insets.bottom + 16 
+                            backgroundColor: colors.surface,
+                            borderRightColor: colors.border,
+                            paddingTop: insets.top + 10,
+                            paddingBottom: Math.max(insets.bottom, 12),
                         }
                     ]}
                 >
@@ -81,48 +85,64 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                                 resizeMode="contain" 
                             />
                             <View>
-                                <Text style={styles.brandTitle}>EliteBoards</Text>
+                                <Text style={[styles.brandTitle, { color: colors.text }]}>EliteBoards</Text>
                                 <Text style={styles.brandSub}>NAVIGATION</Text>
                             </View>
                         </View>
-                        <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={10}>
-                            <Ionicons name="close" size={20} color="#94a3b8" />
+                        <Pressable 
+                            style={[styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]} 
+                            onPress={onClose} 
+                            hitSlop={10}
+                        >
+                            <Ionicons name="close" size={20} color={colors.textSecondary} />
                         </Pressable>
                     </View>
 
-                    {/* User Card */}
+                    {/* Informative Identity Card (Issue 7: Single canonical way to access profile is nav item below) */}
                     {user ? (
-                        <Pressable 
-                            style={styles.userCard}
-                            onPress={() => navigateTo('/profile')}
+                        <View 
+                            style={[
+                                styles.userCard, 
+                                { 
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                    borderColor: colors.border,
+                                }
+                            ]}
                         >
                             {user.picture ? (
                                 <Image source={{ uri: user.picture }} style={styles.userAvatar} />
                             ) : (
-                                <View style={styles.userAvatarPlaceholder}>
-                                    <Text style={styles.userAvatarText}>{user.name?.charAt(0) || '?'}</Text>
+                                <View style={[styles.userAvatarPlaceholder, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                                    <Text style={[styles.userAvatarText, { color: colors.textSecondary }]}>{user.name?.charAt(0) || '?'}</Text>
                                 </View>
                             )}
                             <View style={styles.userInfo}>
-                                <Text style={styles.userName} numberOfLines={1}>{user.name}</Text>
-                                <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
+                                <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>{user.name}</Text>
+                                <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>{user.email}</Text>
                                 <View style={styles.roleBadge}>
-                                    <Text style={[styles.roleText, { color: user.isAdmin ? '#a855f7' : '#818cf8' }]}>
+                                    <Text style={[styles.roleText, { color: user.isAdmin ? '#c084fc' : colors.primaryLight }]}>
                                         {user.isAdmin ? 'ADMINISTRATOR' : 'COMPETITOR'}
                                     </Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color="#475569" />
-                        </Pressable>
+                        </View>
                     ) : (
-                        <View style={styles.guestCard}>
+                        <View 
+                            style={[
+                                styles.guestCard,
+                                {
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                    borderColor: colors.border,
+                                }
+                            ]}
+                        >
                             <View style={styles.guestLeft}>
-                                <View style={styles.guestAvatar}>
-                                    <Ionicons name="person-outline" size={20} color="#94a3b8" />
+                                <View style={[styles.guestAvatar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                    <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
                                 </View>
                                 <View>
-                                    <Text style={styles.guestTitle}>Guest Student</Text>
-                                    <Text style={styles.guestSub}>Sign in to save rankings</Text>
+                                    <Text style={[styles.guestTitle, { color: colors.text }]}>Guest Student</Text>
+                                    <Text style={[styles.guestSub, { color: colors.textSecondary }]}>Sign in to save rankings</Text>
                                 </View>
                             </View>
                             <Pressable 
@@ -137,7 +157,7 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                     {/* Nav Items List */}
                     <ScrollView style={styles.navScroll} showsVerticalScrollIndicator={false}>
                         <View style={styles.sectionDivider}>
-                            <Text style={styles.sectionHeader}>EXPLORE</Text>
+                            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>EXPLORE</Text>
                         </View>
 
                         {/* Home */}
@@ -149,32 +169,34 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                                 <Ionicons 
                                     name={isCurrent('/') ? "home" : "home-outline"} 
                                     size={18} 
-                                    color={isCurrent('/') ? "#818cf8" : "#94a3b8"} 
+                                    color={isCurrent('/') ? colors.primaryLight : colors.textSecondary} 
                                 />
                             </View>
                             <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/') && styles.navLabelActive]}>Home</Text>
-                                <Text style={styles.navSub}>Leaderboards & Rankings</Text>
+                                <Text style={[styles.navLabel, { color: isCurrent('/') ? colors.text : colors.textSecondary }, isCurrent('/') && styles.navLabelActive]}>Home</Text>
+                                <Text style={[styles.navSub, { color: colors.textMuted }]}>Leaderboards & Rankings</Text>
                             </View>
                         </Pressable>
 
-                        {/* Profile */}
-                        <Pressable 
-                            style={[styles.navItem, isCurrent('/profile') && styles.navItemActive]}
-                            onPress={() => navigateTo('/profile')}
-                        >
-                            <View style={[styles.navIconWrap, isCurrent('/profile') && styles.navIconActive]}>
-                                <Ionicons 
-                                    name={isCurrent('/profile') ? "person" : "person-outline"} 
-                                    size={18} 
-                                    color={isCurrent('/profile') ? "#818cf8" : "#94a3b8"} 
-                                />
-                            </View>
-                            <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/profile') && styles.navLabelActive]}>Profile</Text>
-                                <Text style={styles.navSub}>Name, delete, manage boards</Text>
-                            </View>
-                        </Pressable>
+                        {/* Profile - The single place to navigate to profile */}
+                        {user && (
+                            <Pressable 
+                                style={[styles.navItem, isCurrent('/profile') && styles.navItemActive]}
+                                onPress={() => navigateTo('/profile')}
+                            >
+                                <View style={[styles.navIconWrap, isCurrent('/profile') && styles.navIconActive]}>
+                                    <Ionicons 
+                                        name={isCurrent('/profile') ? "person" : "person-outline"} 
+                                        size={18} 
+                                        color={isCurrent('/profile') ? colors.primaryLight : colors.textSecondary} 
+                                    />
+                                </View>
+                                <View style={styles.navLabelWrap}>
+                                    <Text style={[styles.navLabel, { color: isCurrent('/profile') ? colors.text : colors.textSecondary }, isCurrent('/profile') && styles.navLabelActive]}>Profile</Text>
+                                    <Text style={[styles.navSub, { color: colors.textMuted }]}>Name update, delete, manage boards</Text>
+                                </View>
+                            </Pressable>
+                        )}
 
                         {/* Settings */}
                         <Pressable 
@@ -185,12 +207,12 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                                 <Ionicons 
                                     name={isCurrent('/settings') ? "settings" : "settings-outline"} 
                                     size={18} 
-                                    color={isCurrent('/settings') ? "#818cf8" : "#94a3b8"} 
+                                    color={isCurrent('/settings') ? colors.primaryLight : colors.textSecondary} 
                                 />
                             </View>
                             <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/settings') && styles.navLabelActive]}>Settings</Text>
-                                <Text style={styles.navSub}>Device theme, notification settings</Text>
+                                <Text style={[styles.navLabel, { color: isCurrent('/settings') ? colors.text : colors.textSecondary }, isCurrent('/settings') && styles.navLabelActive]}>Settings</Text>
+                                <Text style={[styles.navSub, { color: colors.textMuted }]}>Device theme, notification settings</Text>
                             </View>
                         </Pressable>
 
@@ -203,41 +225,18 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                                 <Ionicons 
                                     name={isCurrent('/about') ? "information-circle" : "information-circle-outline"} 
                                     size={18} 
-                                    color={isCurrent('/about') ? "#818cf8" : "#94a3b8"} 
+                                    color={isCurrent('/about') ? colors.primaryLight : colors.textSecondary} 
                                 />
                             </View>
                             <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/about') && styles.navLabelActive]}>About</Text>
-                                <Text style={styles.navSub}>Version, documentation, live link</Text>
+                                <Text style={[styles.navLabel, { color: isCurrent('/about') ? colors.text : colors.textSecondary }, isCurrent('/about') && styles.navLabelActive]}>About</Text>
+                                <Text style={[styles.navSub, { color: colors.textMuted }]}>Version, documentation & overview</Text>
                             </View>
                         </Pressable>
 
                         <View style={styles.sectionDivider}>
-                            <Text style={styles.sectionHeader}>ACTIVITY</Text>
+                            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>COMMUNITY & SYSTEM</Text>
                         </View>
-
-                        {/* Notifications */}
-                        <Pressable 
-                            style={[styles.navItem, isCurrent('/notifications') && styles.navItemActive]}
-                            onPress={() => navigateTo('/notifications')}
-                        >
-                            <View style={[styles.navIconWrap, isCurrent('/notifications') && styles.navIconActive]}>
-                                <Ionicons 
-                                    name={isCurrent('/notifications') ? "notifications" : "notifications-outline"} 
-                                    size={18} 
-                                    color={isCurrent('/notifications') ? "#818cf8" : "#94a3b8"} 
-                                />
-                            </View>
-                            <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/notifications') && styles.navLabelActive]}>Notifications</Text>
-                                <Text style={styles.navSub}>Alerts & reactions</Text>
-                            </View>
-                            {unreadCount > 0 && (
-                                <View style={styles.unreadBadge}>
-                                    <Text style={styles.unreadBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                                </View>
-                            )}
-                        </Pressable>
 
                         {/* Feedback */}
                         <Pressable 
@@ -248,53 +247,53 @@ export default function SidebarDrawer({ visible, onClose, unreadCount }: Sidebar
                                 <Ionicons 
                                     name={isCurrent('/feedback') ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} 
                                     size={18} 
-                                    color={isCurrent('/feedback') ? "#818cf8" : "#94a3b8"} 
+                                    color={isCurrent('/feedback') ? colors.primaryLight : colors.textSecondary} 
                                 />
                             </View>
                             <View style={styles.navLabelWrap}>
-                                <Text style={[styles.navLabel, isCurrent('/feedback') && styles.navLabelActive]}>Feedback</Text>
-                                <Text style={styles.navSub}>Send bug report & requests</Text>
+                                <Text style={[styles.navLabel, { color: isCurrent('/feedback') ? colors.text : colors.textSecondary }, isCurrent('/feedback') && styles.navLabelActive]}>Feedback</Text>
+                                <Text style={[styles.navSub, { color: colors.textMuted }]}>Send bug report & feature requests</Text>
                             </View>
                         </Pressable>
 
-                        {/* Admin */}
+                        {/* Admin Console (Admin Only) */}
                         {user?.isAdmin && (
                             <Pressable 
                                 style={[styles.navItem, isCurrent('/admin') && styles.navItemActive]}
                                 onPress={() => navigateTo('/admin')}
                             >
-                                <View style={[styles.navIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
+                                <View style={[styles.navIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
                                     <Ionicons name="shield-checkmark" size={18} color="#a855f7" />
                                 </View>
                                 <View style={styles.navLabelWrap}>
                                     <Text style={[styles.navLabel, { color: '#c084fc' }]}>Admin Console</Text>
-                                    <Text style={styles.navSub}>Moderation & audits</Text>
+                                    <Text style={[styles.navSub, { color: colors.textMuted }]}>Moderation & audits</Text>
                                 </View>
                             </Pressable>
                         )}
                     </ScrollView>
 
                     {/* Bottom Actions */}
-                    <View style={styles.footer}>
+                    <View style={[styles.footer, { borderTopColor: colors.border }]}>
                         <Pressable 
-                            style={styles.webBtn}
+                            style={[styles.webBtn, { borderColor: colors.border, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }]}
                             onPress={async () => {
                                 onClose();
                                 await WebBrowser.openBrowserAsync('https://leaderboard-xgi1.onrender.com');
                             }}
                         >
-                            <Ionicons name="globe-outline" size={16} color="#818cf8" />
-                            <Text style={styles.webBtnText}>Open Web Platform</Text>
+                            <Ionicons name="globe-outline" size={15} color={colors.primaryLight} />
+                            <Text style={[styles.webBtnText, { color: colors.primaryLight }]}>Open Web Platform</Text>
                         </Pressable>
 
                         {user && (
                             <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
-                                <Ionicons name="log-out-outline" size={16} color="#f87171" />
-                                <Text style={styles.signOutText}>Sign Out</Text>
+                                <Ionicons name="log-out-outline" size={15} color={colors.danger} />
+                                <Text style={[styles.signOutText, { color: colors.danger }]}>Sign Out</Text>
                             </Pressable>
                         )}
 
-                        <Text style={styles.versionText}>EliteBoards v1.1.0 • OTA Active</Text>
+                        <Text style={[styles.versionText, { color: colors.textMuted }]}>EliteBoards v1.1.0 • OTA Active</Text>
                     </View>
                 </View>
             </View>
@@ -316,10 +315,11 @@ const styles = StyleSheet.create({
         right: 0,
     },
     drawer: {
-        backgroundColor: '#0a0f1d',
-        height: '100%',
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
         borderRightWidth: 1,
-        borderRightColor: 'rgba(255,255,255,0.08)',
         paddingHorizontal: 16,
         justifyContent: 'space-between',
         shadowColor: '#000',
@@ -332,8 +332,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 16,
-        paddingHorizontal: 4,
+        marginBottom: 12,
+        paddingHorizontal: 2,
     },
     brandRow: {
         flexDirection: 'row',
@@ -341,11 +341,10 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     logo: {
-        width: 32,
-        height: 32,
+        width: 30,
+        height: 30,
     },
     brandTitle: {
-        color: '#ffffff',
         fontSize: 16,
         fontWeight: '900',
         letterSpacing: -0.5,
@@ -357,41 +356,36 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
     },
     closeBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        width: 30,
+        height: 30,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
     userCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        padding: 12,
-        borderRadius: 16,
+        padding: 10,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
-        marginBottom: 14,
+        marginBottom: 10,
     },
     userAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.1)',
     },
     userAvatarPlaceholder: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.08)',
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     userAvatarText: {
-        color: '#94a3b8',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '900',
     },
     userInfo: {
@@ -399,17 +393,15 @@ const styles = StyleSheet.create({
         marginLeft: 10,
     },
     userName: {
-        color: '#ffffff',
         fontSize: 13,
         fontWeight: '800',
     },
     userEmail: {
-        color: '#64748b',
         fontSize: 10,
         marginTop: 1,
     },
     roleBadge: {
-        marginTop: 3,
+        marginTop: 2,
     },
     roleText: {
         fontSize: 8,
@@ -420,41 +412,35 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        padding: 12,
-        borderRadius: 16,
+        padding: 10,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
-        marginBottom: 14,
+        marginBottom: 10,
     },
     guestLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
     },
     guestAvatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        width: 32,
+        height: 32,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
     guestTitle: {
-        color: '#ffffff',
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '800',
     },
     guestSub: {
-        color: '#64748b',
-        fontSize: 10,
-        marginTop: 1,
+        fontSize: 9,
     },
     guestLoginBtn: {
         backgroundColor: '#4f46e5',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 10,
+        borderRadius: 8,
     },
     guestLoginText: {
         color: '#ffffff',
@@ -465,12 +451,11 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     sectionDivider: {
-        marginTop: 10,
-        marginBottom: 6,
+        marginTop: 6,
+        marginBottom: 4,
         paddingHorizontal: 6,
     },
     sectionHeader: {
-        color: '#475569',
         fontSize: 8,
         fontWeight: '900',
         letterSpacing: 2,
@@ -478,10 +463,10 @@ const styles = StyleSheet.create({
     navItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 10,
+        paddingVertical: 9,
         paddingHorizontal: 10,
-        borderRadius: 14,
-        marginBottom: 4,
+        borderRadius: 12,
+        marginBottom: 3,
     },
     navItemActive: {
         backgroundColor: 'rgba(99, 102, 241, 0.12)',
@@ -489,9 +474,9 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(99, 102, 241, 0.25)',
     },
     navIconWrap: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
+        width: 30,
+        height: 30,
+        borderRadius: 8,
         backgroundColor: 'rgba(255,255,255,0.03)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -504,51 +489,31 @@ const styles = StyleSheet.create({
         marginLeft: 10,
     },
     navLabel: {
-        color: '#cbd5e1',
         fontSize: 13,
         fontWeight: '800',
     },
     navLabelActive: {
-        color: '#ffffff',
+        fontWeight: '900',
     },
     navSub: {
-        color: '#64748b',
-        fontSize: 10,
-        marginTop: 1,
-    },
-    unreadBadge: {
-        backgroundColor: '#6366f1',
-        minWidth: 18,
-        height: 18,
-        borderRadius: 9,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-    unreadBadgeText: {
-        color: '#ffffff',
         fontSize: 9,
-        fontWeight: '900',
+        marginTop: 1,
     },
     footer: {
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.06)',
-        paddingTop: 12,
-        gap: 8,
+        paddingTop: 10,
+        gap: 6,
     },
     webBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        paddingVertical: 10,
-        borderRadius: 12,
+        paddingVertical: 9,
+        borderRadius: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
     },
     webBtnText: {
-        color: '#818cf8',
         fontSize: 11,
         fontWeight: '800',
         letterSpacing: 0.5,
@@ -557,17 +522,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 8,
+        gap: 6,
+        paddingVertical: 6,
     },
     signOutText: {
-        color: '#f87171',
         fontSize: 11,
         fontWeight: '800',
     },
     versionText: {
-        color: '#334155',
-        fontSize: 9,
+        fontSize: 8,
         fontWeight: '800',
         textAlign: 'center',
         letterSpacing: 0.5,

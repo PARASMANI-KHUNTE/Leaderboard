@@ -23,6 +23,8 @@ import {
   useToggleLeaderboardStatus,
 } from '../../../src/api/hooks';
 import { useLeaderboardRealtime } from '../../../src/realtime/useLeaderboardRealtime';
+import { useThemedDialog } from '../../../src/components/ThemedDialog';
+import { useTheme } from '../../../src/theme/ThemeContext';
 
 const PAGE_LIMIT = 20;
 const REPORT_REASONS = ['Fake Name', 'Suspicious CGPA', 'Duplicate Entry', 'Inappropriate Content'];
@@ -33,6 +35,8 @@ export default function LeaderboardScreen() {
   const api = useApi();
   const { user, token } = useAuth();
   const { isConnected } = useOffline();
+  const { showAlert, showConfirm } = useThemedDialog();
+  const { colors, isDark } = useTheme();
 
   const { data: leaderboard } = useLeaderboardBySlug(slug);
   const [cachedLeaderboardMeta, setCachedLeaderboardMeta] = useState<any | null>(null);
@@ -124,23 +128,23 @@ export default function LeaderboardScreen() {
 
   const onSubmitReport = async () => {
     if (!reportEntryId || !reportReason) {
-      Alert.alert('Reason required', 'Please select a reason for the report.');
+      showAlert('Reason Required', 'Please select a reason for the report.', 'warning');
       return;
     }
     try {
       await submitReport.mutateAsync({ entryId: reportEntryId, reason: reportReason });
       setReportEntryId(null);
       setReportReason('');
-      Alert.alert('Report submitted', 'Thanks. The admin team will review it.');
+      showAlert('Report Submitted', 'Thanks. The admin team will review it.', 'success');
     } catch (e: any) {
-      Alert.alert('Report failed', e?.message ?? 'Unknown error');
+      showAlert('Report Failed', e?.message ?? 'Unknown error', 'danger');
     }
   };
 
   const openSubmitModal = () => {
-    if (!effectiveLeaderboard?.isLive) { Alert.alert('Closed', 'Submissions are disabled.'); return; }
-    if (!isConnected) { Alert.alert('Offline', 'Actions are disabled while offline.'); return; }
-    if (!user) { Alert.alert('Sign in required'); router.replace('/login'); return; }
+    if (!effectiveLeaderboard?.isLive) { showAlert('Submissions Paused', 'This leaderboard is currently in maintenance mode.', 'warning'); return; }
+    if (!isConnected) { showAlert('Offline', 'Actions are disabled while offline.', 'warning'); return; }
+    if (!user) { showAlert('Sign In Required', 'Please log in to submit your ranking.', 'info'); router.replace('/login'); return; }
     setEditingEntry(null); setEntryName(''); setEntryCgpa(''); setEntryMarks('');
     setEntryError(null); setEntryStatus('idle'); setEntryModalOpen(true);
   };
@@ -288,10 +292,12 @@ export default function LeaderboardScreen() {
                 <Pressable
                   style={[s.actionBtn, s.actionBtnDanger]}
                   onPress={() => {
-                    Alert.alert('Delete entry?', 'This cannot be undone.', [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteEntry.mutateAsync(entryId) },
-                    ]);
+                    showConfirm(
+                      'Delete entry?',
+                      'This cannot be undone and will permanently remove your score.',
+                      () => deleteEntry.mutateAsync(entryId),
+                      { type: 'danger', confirmText: 'Delete' }
+                    );
                   }}
                 >
                   <Ionicons name="trash-outline" size={16} color="#ef4444" />
@@ -321,12 +327,8 @@ export default function LeaderboardScreen() {
         onEndReachedThreshold={0.3}
         ListHeaderComponent={
           <View>
-            {/* Back + Admin bar */}
+            {/* Admin & Share Action Bar */}
             <View style={s.topBar}>
-              <Pressable style={s.backBtn} onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={20} color="#64748b" />
-                <Text style={s.backText}>BACK TO EXPLORE</Text>
-              </Pressable>
               <View style={s.topBarRight}>
                 {canAdmin && (
                   <>
@@ -338,20 +340,21 @@ export default function LeaderboardScreen() {
                         const msg = isLive
                           ? 'Put this leaderboard into maintenance mode? Submissions will be paused.'
                           : 'Make this leaderboard live? Students will be able to submit scores.';
-                        Alert.alert(`${action} Leaderboard?`, msg, [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: action,
-                            style: isLive ? 'destructive' : 'default',
-                            onPress: () => {
-                              toggleBoardStatus.mutate(String(effectiveLeaderboard?._id), {
-                                onError: (err: any) => {
-                                  Alert.alert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status');
-                                },
-                              });
-                            },
+                        showConfirm(
+                          `${action} Leaderboard?`,
+                          msg,
+                          () => {
+                            toggleBoardStatus.mutate(String(effectiveLeaderboard?._id), {
+                              onError: (err: any) => {
+                                showAlert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status', 'danger');
+                              },
+                            });
                           },
-                        ]);
+                          {
+                            type: isLive ? 'warning' : 'info',
+                            confirmText: action,
+                          }
+                        );
                       }}
                     >
                       <Ionicons 
@@ -366,10 +369,15 @@ export default function LeaderboardScreen() {
                     <Pressable
                       style={[s.topActionBtn, s.topBtnDanger]}
                       onPress={() => {
-                        Alert.alert('Delete Board?', 'Removes all entries permanently.', [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Delete', style: 'destructive', onPress: () => { deleteBoard.mutate(String(effectiveLeaderboard?._id)); router.replace('/'); }},
-                        ]);
+                        showConfirm(
+                          'Delete Board?',
+                          'This removes all entries permanently.',
+                          () => {
+                            deleteBoard.mutate(String(effectiveLeaderboard?._id));
+                            router.replace('/');
+                          },
+                          { type: 'danger', confirmText: 'Delete' }
+                        );
                       }}
                     >
                       <Ionicons name="trash" size={12} color="#fca5a5" />

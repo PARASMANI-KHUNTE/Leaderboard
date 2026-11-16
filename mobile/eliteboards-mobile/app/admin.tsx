@@ -18,6 +18,8 @@ import {
   useToggleBan,
   useToggleFeedbackRead,
 } from '../src/api/hooks';
+import { useThemedDialog } from '../src/components/ThemedDialog';
+import { useTheme } from '../src/theme/ThemeContext';
 
 type TabKey = 'reports' | 'users' | 'feedback';
 
@@ -34,6 +36,8 @@ export default function AdminScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { isConnected } = useOffline();
+  const { colors } = useTheme();
+  const { showConfirm, showAlert } = useThemedDialog();
 
   const { tab: urlTab } = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<TabKey>((urlTab as TabKey) || 'reports');
@@ -100,10 +104,12 @@ export default function AdminScreen() {
             style={[s.actionBtn, s.btnDanger, disabled && s.btnDisabled]}
             disabled={disabled}
             onPress={() => {
-              Alert.alert('Delete Entry?', 'Remove this from the leaderboard.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: () => resolveReport.mutate({ reportId: item._id, action: 'delete' }) },
-              ]);
+              showConfirm(
+                'Delete Entry?',
+                'Remove this entry permanently from the leaderboard.',
+                () => resolveReport.mutate({ reportId: item._id, action: 'delete' }),
+                { type: 'danger', confirmText: 'Delete' }
+              );
             }}
           >
             <Text style={s.btnText}>DELETE ENTRY</Text>
@@ -163,10 +169,12 @@ export default function AdminScreen() {
                 style={[s.userActionBtn, s.btnDanger, disabled && s.btnDisabled]}
                 disabled={disabled}
                 onPress={() => {
-                  Alert.alert('Purge User?', `Permanently delete ${item.displayName} and all their data?`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => deleteUser.mutate(item._id) },
-                  ]);
+                  showConfirm(
+                    'Purge User?',
+                    `Permanently delete ${item.displayName} and all their scores & data across the platform?`,
+                    () => deleteUser.mutate(item._id),
+                    { type: 'danger', confirmText: 'Delete' }
+                  );
                 }}
               >
                 <Text style={s.userActionBtnText}>DELETE</Text>
@@ -203,10 +211,12 @@ export default function AdminScreen() {
              style={[s.iconBtn, s.iconBtnDanger, disabled && s.btnDisabled]}
              disabled={disabled}
              onPress={() => {
-               Alert.alert('Delete Feedback?', 'Remove this message.', [
-                 { text: 'Cancel', style: 'cancel' },
-                 { text: 'Delete', style: 'destructive', onPress: () => deleteFeedback.mutate(item._id) },
-               ]);
+               showConfirm(
+                 'Delete Feedback?',
+                 'Remove this feedback message permanently.',
+                 () => deleteFeedback.mutate(item._id),
+                 { type: 'danger', confirmText: 'Delete' }
+               );
              }}
           >
             <Ionicons name="trash-outline" size={18} color="#ef4444" />
@@ -218,29 +228,22 @@ export default function AdminScreen() {
 
   return (
     <View style={s.screen}>
-      <View style={s.header}>
-        <View style={s.titleRow}>
-          <View style={s.shieldIcon}>
-            <Ionicons name="shield-checkmark" size={24} color="white" />
-          </View>
-          <View>
-            <Text style={s.titleMain}>ADMIN CONTROL</Text>
-            <Text style={s.titleSub}>SYSTEM MANAGEMENT HUB</Text>
-          </View>
+      {(isBanned || !isConnected) && (
+        <View style={s.header}>
+          {isBanned && (
+            <View style={s.bannerRow}>
+              <Ionicons name="ban" size={12} color="#fb7185" />
+              <Text style={s.banner}>Actions disabled: Account Banned</Text>
+            </View>
+          )}
+          {!isConnected && (
+            <View style={s.bannerRow}>
+              <Ionicons name="wifi-outline" size={12} color="#fb7185" />
+              <Text style={s.banner}>Actions disabled: Offline</Text>
+            </View>
+          )}
         </View>
-        {isBanned && (
-          <View style={s.bannerRow}>
-            <Ionicons name="ban" size={12} color="#fb7185" />
-            <Text style={s.banner}>Actions disabled: Account Banned</Text>
-          </View>
-        )}
-        {!isConnected && (
-          <View style={s.bannerRow}>
-            <Ionicons name="wifi-outline" size={12} color="#fb7185" />
-            <Text style={s.banner}>Actions disabled: Offline</Text>
-          </View>
-        )}
-      </View>
+      )}
 
       {/* Persistent Tabs */}
       <View style={s.tabsRow}>
