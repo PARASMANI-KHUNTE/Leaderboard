@@ -1,10 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
-import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity, Crown, ShieldCheck, Smartphone } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { 
+    Trophy, 
+    Plus, 
+    ArrowRight, 
+    LayoutGrid, 
+    Users, 
+    Trash2, 
+    Power, 
+    PowerOff, 
+    Search, 
+    Crown, 
+    Filter,
+    ChevronLeft,
+    ChevronRight,
+    Sparkles,
+    Activity
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getSocket } from '../utils/socketSingleton';
 
 const Landing = () => {
@@ -12,6 +28,16 @@ const Landing = () => {
     const { showAlert, showConfirm } = useModal();
     const [leaderboards, setLeaderboards] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'live', 'maintenance'
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalBoards: 0,
+        limit: 9
+    });
+
+    // Create Modal State
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newName, setNewName] = useState('');
     const [entryMode, setEntryMode] = useState('manual');
@@ -24,31 +50,51 @@ const Landing = () => {
         autoAcceptOnIdentityMatch: true,
     });
 
-    useEffect(() => {
-        const fetchLeaderboards = async () => {
-            try {
-                const res = await axios.get(`${API_URL}/api/leaderboards?limit=3`);
-                setLeaderboards(res.data.leaderboards);
-            } catch (err) {
-                console.error('Error:', err);
-            } finally {
-                setLoading(false);
+    const fetchLeaderboards = useCallback(async (page = 1) => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`${API_URL}/api/leaderboards`, {
+                params: {
+                    page,
+                    limit: pagination.limit,
+                    search: search.trim() || undefined,
+                    status: statusFilter !== 'all' ? statusFilter : undefined
+                }
+            });
+            setLeaderboards(res.data.leaderboards || []);
+            if (res.data.pagination) {
+                setPagination(res.data.pagination);
             }
-        };
-        fetchLeaderboards();
+        } catch (err) {
+            console.error('Failed to fetch leaderboards:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [pagination.limit, search, statusFilter]);
 
-        // Real-time listeners via shared socket singleton
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            fetchLeaderboards(1);
+        }, 300);
+
+        return () => clearTimeout(debounceTimer);
+    }, [fetchLeaderboards]);
+
+    // Real-time socket listeners
+    useEffect(() => {
         const socket = getSocket();
 
         const handleCreated = (newBoard) => {
             setLeaderboards(prev => {
                 if (prev.some(lb => lb._id === newBoard._id)) return prev;
-                return [newBoard, ...prev].slice(0, 3);
+                return [newBoard, ...prev];
             });
+            setPagination(prev => ({ ...prev, totalBoards: prev.totalBoards + 1 }));
         };
 
         const handleDeleted = (deletedId) => {
             setLeaderboards(prev => prev.filter(lb => lb._id !== deletedId));
+            setPagination(prev => ({ ...prev, totalBoards: Math.max(0, prev.totalBoards - 1) }));
         };
 
         const handleStatusUpdated = ({ id, isLive, entryCount }) => {
@@ -76,19 +122,17 @@ const Landing = () => {
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post(`${API_URL}/api/leaderboards/create`,
-                {
-                    name: newName,
-                    entryMode,
-                    fields,
-                    ranking,
-                    verification,
-                }
-            );
+            const res = await axios.post(`${API_URL}/api/leaderboards/create`, {
+                name: newName,
+                entryMode,
+                fields,
+                ranking,
+                verification,
+            });
             showAlert('Success', 'Leaderboard created! Share the link with students.');
-            setLeaderboards((prev) => {
+            setLeaderboards(prev => {
                 if (prev.some(lb => lb._id === res.data._id)) return prev;
-                return [res.data, ...prev].slice(0, 3);
+                return [res.data, ...prev];
             });
             setShowCreateModal(false);
             setNewName('');
@@ -121,7 +165,7 @@ const Landing = () => {
 
         try {
             await axios.delete(`${API_URL}/api/leaderboards/${id}`);
-            setLeaderboards((prev) => prev.filter(lb => lb._id !== id));
+            setLeaderboards(prev => prev.filter(lb => lb._id !== id));
             showAlert('Deleted', 'Leaderboard has been removed.');
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to delete leaderboard');
@@ -146,97 +190,107 @@ const Landing = () => {
 
         try {
             const res = await axios.post(`${API_URL}/api/leaderboards/toggle-status/${id}`, {});
-            setLeaderboards((prev) => prev.map((lb) => lb._id === id ? { ...lb, isLive: res.data.isLive } : lb));
+            setLeaderboards(prev => prev.map(lb => lb._id === id ? { ...lb, isLive: res.data.isLive } : lb));
         } catch (err) {
             showAlert('Error', err.response?.data?.message || 'Failed to toggle status');
         }
     };
 
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= pagination.totalPages) {
+            fetchLeaderboards(newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     return (
-        <div className="min-h-screen flex flex-col justify-between">
-            <div className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
-            <div className="text-center space-y-8 relative py-20">
-                {/* Background Glows */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 blur-[120px] rounded-full -z-10 animate-pulse"></div>
-                <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-600/5 blur-[100px] rounded-full -z-10"></div>
-                
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="flex flex-col items-center justify-center gap-4 mb-4"
-                >
-                    <div className="flex items-center gap-3 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full backdrop-blur-md">
-                        <Users className="w-4 h-4 text-indigo-400" />
-                        <span className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em]">Trusted by 500+ Students</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            {/* Top Toolbar Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-white/5 pb-8">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl sm:text-4xl font-black text-white uppercase font-mono tracking-tight flex items-center gap-3">
+                            <Trophy className="w-8 h-8 text-indigo-400" />
+                            Leaderboards
+                        </h1>
+                        <span className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest font-mono">
+                            {pagination.totalBoards} Total
+                        </span>
                     </div>
-                    <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
-                        <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                        <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em]">Real-time Systems Active</span>
-                    </div>
-                </motion.div>
+                    <p className="text-slate-400 text-sm max-w-xl">
+                        Real-time student rankings, cohort analytics, and competitive standings.
+                    </p>
+                </div>
 
-                <motion.h1 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                    className="text-5xl sm:text-7xl lg:text-8xl font-black text-white tracking-tighter leading-[0.9]"
-                >
-                    <span className="bg-gradient-to-r from-white via-indigo-200 to-slate-400 bg-clip-text text-transparent uppercase font-mono italic">Real-Time</span><br />
-                    <span className="text-indigo-500 text-glow uppercase font-mono">Leaderboards</span>
-                </motion.h1>
-
-                <motion.p 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto font-medium leading-relaxed"
-                >
-                    Designed for <span className="text-white font-bold">Competitive Minds</span>. Track performance, manage rankings, and stay ahead — all in one powerful system.
-                </motion.p>
-
-                {user && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.6, delay: 0.3 }}
-                        className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-10"
-                    >
+                <div className="flex flex-wrap items-center gap-3">
+                    {user && (
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="group relative flex w-full sm:w-auto items-center justify-center gap-4 px-10 py-5 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl text-white hover:from-indigo-500 hover:to-indigo-700 transition-all duration-300 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:shadow-[0_0_60px_rgba(79,70,229,0.6)] active:scale-95 border border-indigo-400/30 overflow-hidden"
+                            className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
                         >
-                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                            <Plus className="w-6 h-6 relative z-10 group-hover:rotate-90 transition-transform duration-300" />
-                            <div className="relative z-10 flex flex-col items-start leading-none text-left">
-                                <span className="text-[10px] uppercase tracking-widest text-indigo-200 font-bold mb-1">Get Started</span>
-                                <span className="font-black text-xl tracking-wide uppercase">Create New Board</span>
-                            </div>
+                            <Plus className="w-4 h-4" />
+                            Create Board
                         </button>
-                    </motion.div>
-                )}
+                    )}
+                </div>
             </div>
 
+            {/* Filter and Search Controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900/40 p-3 rounded-2xl border border-white/5 backdrop-blur-md">
+                <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                        type="text"
+                        placeholder="Search leaderboards by name..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-500/50 transition-colors"
+                    />
+                </div>
 
+                <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl border border-white/5 self-start sm:self-auto">
+                    {[
+                        { id: 'all', label: 'All Boards' },
+                        { id: 'live', label: 'Live' },
+                        { id: 'maintenance', label: 'Maintenance' },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setStatusFilter(tab.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                                statusFilter === tab.id
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Leaderboard Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    [1, 2, 3].map(i => <div key={i} className="glass h-48 animate-pulse" />)
+                    [1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="glass h-60 rounded-2xl animate-pulse bg-white/[0.02]" />
+                    ))
                 ) : leaderboards.length > 0 ? (
                     leaderboards.map((lb, index) => (
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
+                            transition={{ delay: index * 0.05 }}
                             key={lb._id}
                         >
                             <Link
                                 to={`/lb/${lb.slug}`}
-                                className="glass p-6 block hover:border-indigo-500/50 group transition-all h-full flex flex-col justify-between"
+                                className="glass p-6 rounded-2xl block hover:border-indigo-500/50 group transition-all h-full flex flex-col justify-between"
                             >
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="w-12 h-12 bg-indigo-600/10 rounded-xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                            <Trophy className="w-6 h-6" />
+                                        <div className="w-11 h-11 bg-indigo-600/10 rounded-xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                            <Trophy className="w-5 h-5" />
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {(user?.isAdmin || user?.id === lb.createdBy) && (
@@ -251,20 +305,30 @@ const Landing = () => {
                                             {(user?.isAdmin || user?.id === lb.createdBy) && (
                                                 <button
                                                     onClick={(e) => handleToggleStatus(lb._id, lb.isLive, e)}
-                                                    className={`p-1.5 rounded-lg transition-all ${lb.isLive ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'}`}
-                                                    title={lb.isLive ? "Set Maintenance (Pause)" : "Set Live"}
+                                                    className={`p-1.5 rounded-lg transition-all ${
+                                                        lb.isLive 
+                                                            ? 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20' 
+                                                            : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
+                                                    }`}
+                                                    title={lb.isLive ? "Pause Submissions" : "Set Live"}
                                                 >
                                                     {lb.isLive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                                                 </button>
                                             )}
-                                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${lb.isLive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                                lb.isLive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                            }`}>
                                                 {lb.isLive ? 'Live' : 'Maintenance'}
                                             </span>
                                         </div>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors uppercase font-mono line-clamp-1">
-                                        {lb.name}
-                                    </h3>
+
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white group-hover:text-indigo-400 transition-colors uppercase font-mono line-clamp-1">
+                                            {lb.name}
+                                        </h2>
+                                    </div>
+
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 rounded-lg border border-white/5">
                                             <Users className="w-3 h-3 text-slate-400" />
@@ -291,16 +355,16 @@ const Landing = () => {
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                     <div className="relative flex-shrink-0">
                                                         {lb.topEntry.userPicture ? (
-                                                            <img src={lb.topEntry.userPicture} alt={lb.topEntry.name} className="w-8 h-8 rounded-full border border-yellow-500/40 object-cover" referrerPolicy="no-referrer" />
+                                                            <img src={lb.topEntry.userPicture} alt={lb.topEntry.name} className="w-7 h-7 rounded-full border border-yellow-500/40 object-cover" referrerPolicy="no-referrer" />
                                                         ) : (
-                                                            <div className="w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 text-xs font-bold font-mono">
+                                                            <div className="w-7 h-7 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 text-xs font-bold font-mono">
                                                                 {lb.topEntry.name?.charAt(0) || '#'}
                                                             </div>
                                                         )}
-                                                        <Crown className="w-3.5 h-3.5 text-yellow-400 absolute -top-1.5 -right-1" />
+                                                        <Crown className="w-3 h-3 text-yellow-400 absolute -top-1 -right-1" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[9px] font-black uppercase tracking-widest text-yellow-400 leading-none mb-1">Rank #1 Leader</p>
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-yellow-400 leading-none mb-0.5">Rank #1 Leader</p>
                                                         <p className="text-xs font-bold text-white truncate font-mono">{lb.topEntry.name}</p>
                                                     </div>
                                                 </div>
@@ -311,291 +375,137 @@ const Landing = () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center justify-between text-slate-500 py-1">
+                                            <div className="flex items-center justify-between text-slate-500 py-0.5">
                                                 <span className="text-[10px] font-bold uppercase tracking-widest italic">Awaiting first submission</span>
                                                 <span className="text-[10px] font-mono font-bold text-indigo-400/80">Be #1 &rarr;</span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                <div className="mt-8 flex items-center justify-between text-slate-500 group-hover:text-slate-300">
+
+                                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-slate-500 group-hover:text-slate-300">
                                     <span className="text-xs font-bold tracking-widest uppercase">View Board</span>
-                                    <ArrowRight className="w-4 h-4 translate-x-0 group-hover:translate-x-2 transition-transform" />
+                                    <ArrowRight className="w-4 h-4 translate-x-0 group-hover:translate-x-1.5 transition-transform" />
                                 </div>
                             </Link>
                         </motion.div>
                     ))
                 ) : (
-                    <div className="col-span-full py-20 text-center glass">
+                    <div className="col-span-full py-20 text-center glass rounded-2xl">
                         <LayoutGrid className="w-12 h-12 mx-auto text-slate-700 mb-4" />
-                        <p className="text-slate-500 font-mono italic">No leaderboards found. Be the first to create one!</p>
+                        <p className="text-slate-400 font-mono text-sm">No leaderboards match the current criteria.</p>
+                        {user && (
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                            >
+                                Create New Leaderboard
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
 
-            <div className="flex justify-center pt-10">
-                <Link
-                    to="/boards"
-                    className="group relative flex items-center justify-center gap-4 px-10 py-5 bg-gradient-to-r from-indigo-900/40 to-indigo-800/40 backdrop-blur-md rounded-2xl text-slate-300 hover:text-white transition-all duration-300 border border-white/5 hover:border-indigo-500/30 hover:shadow-[0_0_40px_rgba(79,70,229,0.2)] active:scale-95"
-                >
-                    <LayoutGrid className="w-5 h-5 text-indigo-400 group-hover:rotate-90 transition-transform duration-500" />
-                    <div className="flex flex-col items-start leading-none text-left">
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-indigo-400 group-hover:text-indigo-300 font-bold mb-1">Discover more</span>
-                        <span className="font-black text-lg tracking-wide uppercase">Explore All Boards</span>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-indigo-500 group-hover:translate-x-2 transition-transform duration-300" />
-                </Link>
-            </div>
-
-            {/* About EliteBoards Section */}
-            <section id="about" className="pt-28 pb-16 border-t border-white/10 mt-20 relative">
-                <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-600/10 blur-[120px] rounded-full -z-10"></div>
-                <div className="text-center mb-16 space-y-4">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-                        About The Platform
-                    </div>
-                    <h2 className="text-4xl sm:text-6xl font-black text-white uppercase font-mono tracking-tight leading-none">
-                        Built For <span className="text-indigo-500 italic">Competitive Cohorts</span>
-                    </h2>
-                    <p className="text-slate-400 max-w-3xl mx-auto text-base sm:text-lg leading-relaxed">
-                        EliteBoards is an enterprise-grade academic and competitive leaderboard ecosystem. Engineered to eliminate manual spreadsheets, outdated grade sheets, and fraudulent score entries with synchronous sub-10ms rankings and automated document verification.
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                    <p className="text-xs text-slate-500 font-mono">
+                        Page {pagination.currentPage} of {pagination.totalPages}
                     </p>
-                </div>
-
-                {/* Platform Architectural Pillars */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-indigo-500/30 transition-all">
-                        <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400">
-                            <Zap className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase font-mono">Real-Time Redis Engine</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed">
-                            Powered by Upstash Redis Sorted Sets (ZSets) with an $O(\log N)$ composite score engine. Ranks are recalculated instantly across thousands of entries and broadcasted live via Socket.IO rooms.
-                        </p>
-                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-indigo-400">
-                            <span>&bull; Atomic Invalidation</span>
-                            <span>&bull; Race-Condition Proof</span>
-                        </div>
-                    </div>
-
-                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-emerald-500/30 transition-all">
-                        <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
-                            <ShieldCheck className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase font-mono">Document Verification</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed">
-                            Prevents fake submissions by validating university student IDs and grade cards. Sharp image compression, Tesseract OCR extraction, and OpenRouter LLM comparison verify legitimate academic standing.
-                        </p>
-                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-emerald-400">
-                            <span>&bull; OCR Extraction</span>
-                            <span>&bull; LLM Hallucination Guard</span>
-                        </div>
-                    </div>
-
-                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-purple-500/30 transition-all">
-                        <div className="w-12 h-12 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400">
-                            <Smartphone className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase font-mono">Cross-Platform Sync</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed">
-                            Full-featured React 19 web app and native Expo SDK 55 mobile app for iOS and Android. Backed by TanStack Query, offline disk caching, and instant Over-The-Air (OTA) updates via Expo EAS.
-                        </p>
-                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-purple-400">
-                            <span>&bull; Offline First</span>
-                            <span>&bull; Zero-Downtime OTA</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Production Live Links Callout */}
-                <div className="glass p-8 rounded-3xl border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-slate-900/60 to-indigo-950/40 flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div className="space-y-1 text-center sm:text-left">
-                        <div className="flex items-center justify-center sm:justify-start gap-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 font-mono">Live In Production</span>
-                        </div>
-                        <p className="text-lg font-bold text-white">Access the Live Production System</p>
-                        <p className="text-xs text-slate-400">Web App: <a href="https://leaderboard-xgi1.onrender.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline font-mono">https://leaderboard-xgi1.onrender.com</a></p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <a
-                            href="https://leaderboard-xgi1.onrender.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/30 active:scale-95 flex items-center gap-2"
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handlePageChange(pagination.currentPage - 1)}
+                            disabled={pagination.currentPage <= 1}
+                            className="p-2 glass rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors"
                         >
-                            <Globe className="w-4 h-4" />
-                            Live Web App
-                        </a>
-                        <Link
-                            to="/docs"
-                            className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs uppercase tracking-widest border border-white/10 transition-all active:scale-95"
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => handlePageChange(pagination.currentPage + 1)}
+                            disabled={pagination.currentPage >= pagination.totalPages}
+                            className="p-2 glass rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors"
                         >
-                            Read Docs
-                        </Link>
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
-            </section>
+            )}
 
-            {/* Why EliteBoards Section */}
-            <div className="pt-32 pb-10 border-t border-white/10 mt-20">
-                <div className="text-center mb-16 space-y-4">
-                    <div className="inline-block px-4 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                        Core Advantages
-                    </div>
-                    <h2 className="text-4xl sm:text-6xl font-black text-white uppercase font-mono tracking-tight leading-none">
-                        Why <span className="text-indigo-500 italic">EliteBoards?</span>
-                    </h2>
-                    <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
-                        Precision engineering meets seamless user experience. Built for those who take performance seriously.
-                    </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-indigo-500/50 transition-all">
-                        <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
-                            <Zap className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Socket Powered</h3>
-                        <p className="text-slate-500 leading-relaxed text-sm">
-                            Instant updates without refreshes. Experience the thrill of real-time rank changes as they happen.
-                        </p>
-                    </div>
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-emerald-500/50 transition-all">
-                        <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
-                            <Trophy className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Smart Ranking</h3>
-                        <p className="text-slate-500 leading-relaxed text-sm">
-                            Intelligent tie-handling system ensures fair competition. Equal scores share the same podium.
-                        </p>
-                    </div>
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-purple-500/50 transition-all">
-                        <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-                            <Activity className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Admin Mod</h3>
-                        <p className="text-slate-500 leading-relaxed text-sm">
-                            Complete moderation control. Ban entries, adjust scores, and manage board visibility with one tap.
-                        </p>
-                    </div>
-                    <div className="glass p-8 rounded-[2rem] relative overflow-hidden group hover:border-blue-500/50 transition-all">
-                        <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                            <Download className="w-7 h-7" />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-tighter">Export Ready</h3>
-                        <p className="text-slate-500 leading-relaxed text-sm">
-                            Download comprehensive CSV or PDF reports of your leaderboards for offline analysis and record-keeping.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Tech Power Showcase */}
-            <div className="py-24 relative overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent"></div>
-                <div className="text-center mb-12">
-                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mb-4 block">Engineered for Scalability</span>
-                    <h3 className="text-2xl font-black text-white uppercase font-mono tracking-widest">Technological <span className="text-indigo-500">Foundation</span></h3>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-12 opacity-40 hover:opacity-100 transition-opacity duration-700 grayscale hover:grayscale-0">
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
-                            <span className="text-indigo-400 font-black font-mono">M</span>
-                        </div>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">MongoDB</span>
-                    </div>
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
-                            <span className="text-indigo-400 font-black font-mono">E</span>
-                        </div>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Express.js</span>
-                    </div>
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
-                            <span className="text-indigo-400 font-black font-mono">R</span>
-                        </div>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">React</span>
-                    </div>
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
-                            <span className="text-indigo-400 font-black font-mono">N</span>
-                        </div>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Node.js</span>
-                    </div>
-                    <div className="h-8 w-px bg-white/10 hidden md:block"></div>
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-indigo-500/50 transition-colors">
-                            <Activity className="w-5 h-5 text-indigo-400" />
-                        </div>
-                        <span className="text-slate-400 font-bold uppercase tracking-tighter group-hover:text-white transition-colors">Socket.io</span>
-                    </div>
-                </div>
-            </div>
-
+            {/* Create Leaderboard Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
+                        initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="max-w-md w-full glass p-8 space-y-6"
+                        className="max-w-md w-full glass p-8 rounded-3xl space-y-6"
                     >
-                        <h2 className="text-2xl font-bold text-white">New Leaderboard</h2>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xl font-bold text-white uppercase font-mono">New Leaderboard</h3>
+                            <button 
+                                onClick={() => setShowCreateModal(false)}
+                                className="text-slate-500 hover:text-white text-sm"
+                            >
+                                ✕
+                            </button>
+                        </div>
                         <form onSubmit={handleCreate} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Board Name</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Board Name</label>
                                 <input
                                     autoFocus
                                     type="text"
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
                                     placeholder="e.g. Batch 2025 MCS"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500/50 transition-colors text-sm"
                                     required
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Mode</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Entry Mode</label>
                                 <select
                                     value={entryMode}
                                     onChange={(e) => setEntryMode(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500/50 transition-colors text-sm"
                                 >
                                     <option value="manual">Manual only</option>
-                                    <option value="upload">Upload only</option>
-                                    <option value="hybrid">Hybrid</option>
+                                    <option value="upload">Upload only (Doc Verified)</option>
+                                    <option value="hybrid">Hybrid (Both)</option>
                                 </select>
                             </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Enabled Fields</label>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Enabled Fields</label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {['cgpa', 'sgpa', 'marks'].map((field) => (
                                         <button
                                             key={field}
                                             type="button"
                                             onClick={() => setFields((prev) => ({ ...prev, [field]: !prev[field] }))}
-                                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${fields[field] ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-white/5 border-white/10 text-slate-500'}`}
+                                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                                                fields[field] 
+                                                    ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' 
+                                                    : 'bg-white/5 border-white/10 text-slate-500'
+                                            }`}
                                         >
                                             {field}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Primary Ranking Field</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Primary Ranking Field</label>
                                 <select
                                     value={ranking.primaryField}
                                     onChange={(e) => setRanking((prev) => ({ ...prev, primaryField: e.target.value }))}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500/50 transition-colors text-sm"
                                 >
                                     <option value="cgpa">CGPA</option>
                                     <option value="sgpa">SGPA</option>
                                     <option value="marks">Marks</option>
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Verification Level</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Verification Level</label>
                                 <select
                                     value={verification.level}
                                     onChange={(e) => {
@@ -607,7 +517,7 @@ const Landing = () => {
                                             requireGradeCard: level !== 'none',
                                         }));
                                     }}
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-indigo-500/50 transition-colors"
+                                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-indigo-500/50 transition-colors text-sm"
                                 >
                                     <option value="none">No verification</option>
                                     <option value="identity_match">Identity match required</option>
@@ -615,17 +525,17 @@ const Landing = () => {
                                     <option value="manual_approval">Manual approval required</option>
                                 </select>
                             </div>
-                            <div className="flex gap-4">
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 px-6 py-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors font-bold text-slate-400"
+                                    className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 transition-colors font-bold text-slate-400 text-xs uppercase tracking-wider"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] bg-indigo-600 hover:bg-indigo-500 transition-all text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/20"
+                                    className="flex-[2] bg-indigo-600 hover:bg-indigo-500 transition-all text-white font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/20"
                                 >
                                     Create Board
                                 </button>
@@ -634,42 +544,6 @@ const Landing = () => {
                     </motion.div>
                 </div>
             )}
-            </div>
-
-            {/* Footer */}
-            <footer className="w-full border-t border-white/5 bg-[#020617]/50 pt-16 pb-8 mt-auto backdrop-blur-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
-                        <div className="flex flex-col items-center md:items-start gap-2">
-                            <div className="flex items-center gap-2">
-                                <span className="bg-gradient-to-r from-white via-indigo-200 to-slate-400 bg-clip-text text-transparent uppercase font-mono italic text-2xl font-black">Elite</span>
-                                <span className="text-indigo-500 text-glow uppercase font-mono text-2xl font-black">Boards</span>
-                            </div>
-                            <p className="text-slate-400 text-sm max-w-sm text-center md:text-left mt-2 leading-relaxed">Empowering student communities with real-time competitive ranking systems.</p>
-                        </div>
-                        <div className="flex flex-col items-center md:items-end gap-4">
-                            <span className="text-slate-600 font-bold uppercase tracking-widest text-xs">Developed by</span>
-                            <div className="flex items-center gap-4">
-                                <a href="https://github.com/PARASMANI-KHUNTE" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="GitHub">
-                                    <Github className="w-5 h-5" />
-                                </a>
-                                <a href="https://www.linkedin.com/in/parasmani-khunte-330488228/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-indigo-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="LinkedIn">
-                                    <Linkedin className="w-5 h-5" />
-                                </a>
-                                <a href="mailto:parasmanikhunte@gmail.com" className="text-slate-400 hover:text-teal-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="Email">
-                                    <Mail className="w-5 h-5" />
-                                </a>
-                                <a href="https://parasmanikhunte.onrender.com/" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-emerald-400 transition-all p-3 glass rounded-full hover:bg-white/10 hover:-translate-y-1 duration-300" title="Portfolio">
-                                    <Globe className="w-5 h-5" />
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-center text-slate-500 font-mono text-xs border-t border-white/5 pt-8">
-                        <p>&copy; {new Date().getFullYear()} EliteBoards. Designed & Built by Parasmani Khunte.</p>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };
