@@ -100,7 +100,24 @@ export default function Home() {
                   style={styles.cardActionBtn}
                   onPress={(e) => {
                     e.stopPropagation?.();
-                    toggleLeaderboardStatus.mutate(lbId);
+                    const action = item.isLive ? 'Pause' : 'Resume';
+                    const msg = item.isLive
+                      ? 'Put this leaderboard into maintenance mode? Submissions will be paused.'
+                      : 'Make this leaderboard live? Students will be able to submit scores.';
+                    Alert.alert(`${action} Leaderboard?`, msg, [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: action,
+                        style: item.isLive ? 'destructive' : 'default',
+                        onPress: () => {
+                          toggleLeaderboardStatus.mutate(lbId, {
+                            onError: (err: any) => {
+                              Alert.alert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status');
+                            },
+                          });
+                        },
+                      },
+                    ]);
                   }}
                 >
                   <Ionicons 

@@ -385,7 +385,11 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
         }
 
         // Increment entryCount atomically on the leaderboard collection
-        await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: 1 } }).catch(() => {});
+        const updatedLeaderboard = await Leaderboard.findByIdAndUpdate(
+            leaderboard._id,
+            { $inc: { entryCount: 1 } },
+            { returnDocument: 'after' }
+        ).catch(() => null);
 
         if (redisClient) {
             await syncEntryToZSet(redisClient, leaderboardId, entry).catch(() => {});
@@ -394,7 +398,16 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
         }
 
         const io = req.app.get('socketio');
-        io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
+        if (io) {
+            io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
+            if (updatedLeaderboard) {
+                io.emit('leaderboardStatusUpdated', {
+                    id: leaderboardId,
+                    isLive: updatedLeaderboard.isLive,
+                    entryCount: updatedLeaderboard.entryCount,
+                });
+            }
+        }
 
         res.status(201).json(entry);
     } catch (err) {
@@ -471,7 +484,11 @@ router.delete('/delete/:id', auth, async (req, res) => {
         await LeaderboardEntry.findByIdAndDelete(req.params.id);
 
         // Decrement entryCount atomically
-        await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: -1 } }).catch(() => {});
+        const updatedLeaderboard = leaderboard ? await Leaderboard.findByIdAndUpdate(
+            leaderboard._id,
+            { $inc: { entryCount: -1 } },
+            { returnDocument: 'after' }
+        ).catch(() => null) : null;
 
         const redisClient = await getRedisClient().catch(() => null);
         if (redisClient) {
@@ -480,7 +497,16 @@ router.delete('/delete/:id', auth, async (req, res) => {
         }
 
         const io = req.app.get('socketio');
-        io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
+        if (io) {
+            io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
+            if (updatedLeaderboard) {
+                io.emit('leaderboardStatusUpdated', {
+                    id: leaderboardId,
+                    isLive: updatedLeaderboard.isLive,
+                    entryCount: updatedLeaderboard.entryCount,
+                });
+            }
+        }
 
         res.json({ message: 'Entry deleted successfully' });
     } catch (err) {

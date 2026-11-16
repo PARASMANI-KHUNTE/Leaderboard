@@ -41,10 +41,16 @@ router.post('/create', auth, validateLeaderboardCreate, async (req, res) => {
 
         await leaderboard.save();
 
-        const io = req.app.get('socketio');
-        io.emit('leaderboardCreated', leaderboard);
+        const enhancedBoard = {
+            ...leaderboard.toObject(),
+            entryCount: 0,
+            topEntry: null,
+        };
 
-        res.status(201).json(leaderboard);
+        const io = req.app.get('socketio');
+        if (io) io.emit('leaderboardCreated', enhancedBoard);
+
+        res.status(201).json(enhancedBoard);
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -121,7 +127,7 @@ router.get('/', async (req, res) => {
             topEntry: topEntriesByBoard[String(lb._id)] || null,
         }));
 
-        res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.json({
             leaderboards: enhancedLeaderboards,
             pagination: {
