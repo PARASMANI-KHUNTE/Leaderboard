@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, Dimensions } from 'react-native';
+import { useTheme } from '../src/theme/ThemeContext';
 
 
 const { width, height } = Dimensions.get('window');
@@ -138,6 +139,7 @@ function PulsingOrb({ style, color, size, delay }: { style?: any; color: string;
 }
 
 export default function Loading() {
+  const { colors, isDark } = useTheme();
   const [splashHidden, setSplashHidden] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.3)).current;
@@ -312,7 +314,7 @@ export default function Loading() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       {/* Background gradient */}
       <View style={styles.bgGradient} />
       
@@ -390,10 +392,10 @@ export default function Loading() {
         >
           <View style={styles.titleRow}>
             <Text style={styles.titleElite}>Elite</Text>
-            <Text style={styles.titleBoards}>Boards</Text>
+            <Text style={[styles.titleBoards, { color: colors.primary }]}>Boards</Text>
           </View>
           
-          <Text style={styles.tagline}>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>
             Premium Academic Rankings
           </Text>
 
@@ -424,7 +426,7 @@ export default function Loading() {
                 ]} 
               />
             </View>
-            <Animated.Text style={[styles.statusText, { opacity: msgOpacity }]}>
+            <Animated.Text style={[styles.statusText, { opacity: msgOpacity, color: colors.textSecondary }]}>
               {STATUS_MESSAGES[msgIndex]}
             </Animated.Text>
           </View>
@@ -442,7 +444,7 @@ export default function Loading() {
           <View style={styles.footerDot} />
           <Text style={styles.footerText}>REAL-TIME SYSTEMS ACTIVE</Text>
         </View>
-        <Text style={styles.versionText}>v2.0.4-PREMIUM</Text>
+        <Text style={[styles.versionText, { color: colors.textMuted }]}>v2.0.4-PREMIUM</Text>
       </Animated.View>
     </View>
   );

@@ -67,12 +67,12 @@ export default function LoginScreen() {
         <Text style={s.tagline}>The Ultimate Student Ranking Platform</Text>
       </View>
 
-      <View style={s.card}>
-        <Text style={s.cardTitle}>Account Login</Text>
-        <Text style={s.cardSub}>Sign in to create boards, submit entries, and react to peers.</Text>
+      <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Text style={[s.cardTitle, { color: colors.text }]}>Account Login</Text>
+        <Text style={[s.cardSub, { color: colors.textSecondary }]}>Sign in to create boards, submit entries, and react to peers.</Text>
 
         <Pressable
-          style={[s.googleBtn, loading && s.googleBtnDisabled]}
+          style={[s.googleBtn, { backgroundColor: isDark ? '#ffffff' : colors.surfaceElevated, borderWidth: isDark ? 0 : 1, borderColor: colors.border }, loading && s.googleBtnDisabled]}
           onPress={handleGoogleLogin}
           disabled={loading}
         >
@@ -89,18 +89,18 @@ export default function LoginScreen() {
         </Pressable>
 
         <View style={s.dividerRow}>
-          <View style={s.divider} />
-          <Text style={s.dividerText}>SECURE ACCESS</Text>
-          <View style={s.divider} />
+          <View style={[s.divider, { backgroundColor: colors.borderSubtle }]} />
+          <Text style={[s.dividerText, { color: colors.textMuted }]}>SECURE ACCESS</Text>
+          <View style={[s.divider, { backgroundColor: colors.borderSubtle }]} />
         </View>
 
-        <Text style={s.footerText}>
+        <Text style={[s.footerText, { color: colors.textMuted }]}>
           By continuing, you agree to our terms of academic integrity. Fake data leads to permanent account suspension.
         </Text>
       </View>
 
       <View style={s.bottom}>
-        <Text style={s.version}>PREMIUM_BUILD_v2.0.4</Text>
+        <Text style={[s.version, { color: colors.textMuted }]}>PREMIUM_BUILD_v2.0.4</Text>
         <Text style={s.system}>REAL-TIME_SYSTEMS_ACTIVE</Text>
       </View>
     </View>

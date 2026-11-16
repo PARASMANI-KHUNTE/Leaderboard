@@ -223,7 +223,7 @@ export default function LeaderboardScreen() {
     }
 
     return (
-      <View style={[s.row, rowRank === 1 && s.rowFirst]}>
+      <View style={[s.row, { backgroundColor: colors.card, borderColor: colors.border }, rowRank === 1 && s.rowFirst]}>
         {/* Rank */}
         <View style={s.rankCol}>
           <RankDisplay rank={rowRank} />
@@ -235,13 +235,13 @@ export default function LeaderboardScreen() {
             {item.userPicture ? (
               <Image source={{ uri: item.userPicture }} style={s.avatar} />
             ) : (
-              <View style={s.avatarPlaceholder}>
-                <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
+              <View style={[s.avatarPlaceholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[s.avatarText, { color: colors.textSecondary }]}>{item.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
               </View>
             )}
             <View style={s.nameBlock}>
               <View style={s.nameTagRow}>
-                <Text style={[s.name, rowRank === 1 && s.nameGold]}>{item.name}</Text>
+                <Text style={[s.name, { color: colors.text }, rowRank === 1 && s.nameGold]}>{item.name}</Text>
                 {isPromoted ? (
                   <View style={s.badgePromoted}><Text style={s.badgePromotedText}>PROMOTED</Text></View>
                 ) : (
@@ -251,17 +251,17 @@ export default function LeaderboardScreen() {
                   <View style={s.badgeTied}><Text style={s.badgeTiedText}>TIED</Text></View>
                 )}
               </View>
-              <Text style={s.joinDate}>Joined {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}</Text>
+              <Text style={[s.joinDate, { color: colors.textMuted }]}>Joined {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}</Text>
             </View>
           </View>
 
           {/* Score */}
           <View style={s.scoreRow}>
             {isPromoted ? (
-              <Text style={s.scoreMain}>{item.marks ?? 0} <Text style={s.scoreLabel}>MARKS (700)</Text></Text>
+              <Text style={[s.scoreMain, { color: colors.primaryLight }]}>{item.marks ?? 0} <Text style={[s.scoreLabel, { color: colors.textMuted }]}>MARKS (700)</Text></Text>
             ) : (
-              <Text style={s.scoreMain}>
-                {Number(item.cgpa).toFixed(2)} <Text style={s.scoreLabel}>CGPA{item.marks ? ` | ${item.marks} Marks` : ''}</Text>
+              <Text style={[s.scoreMain, { color: colors.primaryLight }]}>
+                {Number(item.cgpa).toFixed(2)} <Text style={[s.scoreLabel, { color: colors.textMuted }]}>CGPA{item.marks ? ` | ${item.marks} Marks` : ''}</Text>
               </Text>
             )}
           </View>
@@ -269,25 +269,25 @@ export default function LeaderboardScreen() {
           {/* Social + Actions */}
           <View style={s.actionsRow}>
             <Pressable
-              style={[s.socialBtn, liked && s.socialBtnActive]}
+              style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }, liked && s.socialBtnActive]}
               onPress={() => user && reactEntry.mutate(entryId)}
             >
-              <Ionicons name={liked ? "heart" : "heart-outline"} size={14} color={liked ? "#f43f5e" : "#94a3b8"} />
-              <Text style={s.socialCount}>{(item.likedBy ?? []).length}</Text>
+              <Ionicons name={liked ? "heart" : "heart-outline"} size={14} color={liked ? "#f43f5e" : colors.textMuted} />
+              <Text style={[s.socialCount, { color: colors.textSecondary }]}>{(item.likedBy ?? []).length}</Text>
             </Pressable>
 
             <Pressable
-              style={[s.socialBtn, disliked && s.socialBtnActiveBlue]}
+              style={[s.socialBtn, { backgroundColor: colors.surface, borderColor: colors.border }, disliked && s.socialBtnActiveBlue]}
               onPress={() => user && dislikeEntry.mutate(entryId)}
             >
-              <Ionicons name="thumbs-down" size={14} color={disliked ? "#6366f1" : "#94a3b8"} />
-              <Text style={s.socialCount}>{(item.dislikedBy ?? []).length}</Text>
+              <Ionicons name="thumbs-down" size={14} color={disliked ? colors.accent : colors.textMuted} />
+              <Text style={[s.socialCount, { color: colors.textSecondary }]}>{(item.dislikedBy ?? []).length}</Text>
             </Pressable>
 
             {isOwner ? (
               <>
-                <Pressable style={s.actionBtn} onPress={() => openEditModal(item)}>
-                  <Ionicons name="create-outline" size={16} color="#94a3b8" />
+                <Pressable style={[s.actionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }]} onPress={() => openEditModal(item)}>
+                  <Ionicons name="create-outline" size={16} color={colors.textSecondary} />
                 </Pressable>
                 <Pressable
                   style={[s.actionBtn, s.actionBtnDanger]}
@@ -304,7 +304,7 @@ export default function LeaderboardScreen() {
                 </Pressable>
               </>
             ) : user ? (
-              <Pressable style={s.actionBtn} onPress={() => { setReportEntryId(entryId); setReportReason(''); }}>
+              <Pressable style={[s.actionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }]} onPress={() => { setReportEntryId(entryId); setReportReason(''); }}>
                 <Ionicons name="flag-outline" size={16} color="#ef4444" />
               </Pressable>
             ) : null}
@@ -315,7 +315,7 @@ export default function LeaderboardScreen() {
   };
 
   return (
-    <View style={s.screen}>
+    <View style={[s.screen, { backgroundColor: colors.bg }]}>
       <FlatList
         data={entriesToRender}
         keyExtractor={(it) => String(it._id)}
@@ -385,7 +385,7 @@ export default function LeaderboardScreen() {
                     </Pressable>
                   </>
                 )}
-                <Pressable style={s.shareBtn} onPress={handleShare}>
+                <Pressable style={[s.shareBtn, { backgroundColor: colors.primary }]} onPress={handleShare}>
                   <Ionicons name="share-outline" size={12} color="white" />
                   <Text style={[s.shareBtnText, { marginLeft: 4 }]}>SHARE</Text>
                 </Pressable>
@@ -395,42 +395,42 @@ export default function LeaderboardScreen() {
             {/* Title */}
             <View style={s.titleWrap}>
               <View style={s.titleRow}>
-                <Text style={s.titleElite}>Elite</Text>
-                <Text style={s.titleName}> {effectiveLeaderboard?.name ?? 'Leaderboard'}</Text>
+                <Text style={[s.titleElite, { color: colors.primaryLight }]}>Elite</Text>
+                <Text style={[s.titleName, { color: colors.text }]}> {effectiveLeaderboard?.name ?? 'Leaderboard'}</Text>
               </View>
               {!effectiveLeaderboard?.isLive && (
                 <View style={s.downBadge}><Text style={s.downBadgeText}>MAINTENANCE</Text></View>
               )}
-              <Text style={s.titleSub}>Live updates of student performance</Text>
+              <Text style={[s.titleSub, { color: colors.textSecondary }]}>Live updates of student performance</Text>
               {!isConnected && <Text style={s.offlineText}>Offline: showing cached entries</Text>}
             </View>
 
             {/* Stats */}
             <View style={s.statsRow}>
-              <View style={s.statCard}>
-                <Ionicons name="people" size={24} color="#6366f1" style={{ marginBottom: 4 }} />
-                <Text style={s.statNum}>{entriesToRender.length}</Text>
-                <Text style={s.statLabel}>STUDENTS</Text>
+              <View style={[s.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="people" size={24} color={colors.primaryLight} style={{ marginBottom: 4 }} />
+                <Text style={[s.statNum, { color: colors.text }]}>{entriesToRender.length}</Text>
+                <Text style={[s.statLabel, { color: colors.textMuted }]}>STUDENTS</Text>
               </View>
-              <View style={s.statCard}>
+              <View style={[s.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Ionicons name="trophy" size={24} color="#facc15" style={{ marginBottom: 4 }} />
-                <Text style={s.statNum}>{entriesToRender[0]?.cgpa ? Number(entriesToRender[0].cgpa).toFixed(2) : '0.00'}</Text>
-                <Text style={s.statLabel}>TOP SCORE</Text>
+                <Text style={[s.statNum, { color: colors.text }]}>{entriesToRender[0]?.cgpa ? Number(entriesToRender[0].cgpa).toFixed(2) : '0.00'}</Text>
+                <Text style={[s.statLabel, { color: colors.textMuted }]}>TOP SCORE</Text>
               </View>
             </View>
           </View>
         }
         ListEmptyComponent={
           !leaderboardId ? (
-            <View style={s.emptyWrap}><ActivityIndicator color="#6366f1" /><Text style={s.emptyText}>LOADING_DATA...</Text></View>
+            <View style={s.emptyWrap}><ActivityIndicator color={colors.primary} /><Text style={[s.emptyText, { color: colors.textMuted }]}>LOADING_DATA...</Text></View>
           ) : (
-            <View style={s.emptyWrap}><Text style={s.emptyText}>No entries yet.</Text></View>
+            <View style={s.emptyWrap}><Text style={[s.emptyText, { color: colors.textMuted }]}>No entries yet.</Text></View>
           )
         }
         ListFooterComponent={
           hasMore ? (
             <View style={s.loadMoreWrap}>
-              <Pressable style={s.loadMoreBtn} onPress={() => entriesQuery.fetchNextPage()} disabled={entriesQuery.isFetchingNextPage}>
+              <Pressable style={[s.loadMoreBtn, { backgroundColor: colors.primary }]} onPress={() => entriesQuery.fetchNextPage()} disabled={entriesQuery.isFetchingNextPage}>
                 <Text style={s.loadMoreText}>{entriesQuery.isFetchingNextPage ? 'LOADING...' : 'LOAD MORE'}</Text>
               </Pressable>
             </View>
@@ -439,7 +439,7 @@ export default function LeaderboardScreen() {
       />
 
       {/* Submit FAB */}
-      <Pressable style={s.fab} onPress={openSubmitModal}>
+      <Pressable style={[s.fab, { backgroundColor: colors.primary }]} onPress={openSubmitModal}>
         <Ionicons name="add" size={32} color="white" />
       </Pressable>
 
@@ -457,31 +457,31 @@ export default function LeaderboardScreen() {
       {/* Report Modal */}
       {reportEntryId && (
         <View style={s.modalOverlay}>
-          <View style={s.modal}>
+          <View style={[s.modal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={s.modalHeader}>
-              <Ionicons name="alert-circle" size={32} color="#ef4444" />
+              <Ionicons name="alert-circle" size={32} color={colors.danger} />
               <View>
-                <Text style={s.modalTitle}>Report Entry</Text>
-                <Text style={s.modalSub}>Help us maintain integrity</Text>
+                <Text style={[s.modalTitle, { color: colors.text }]}>Report Entry</Text>
+                <Text style={[s.modalSub, { color: colors.textMuted }]}>Help us maintain integrity</Text>
               </View>
             </View>
-            <Text style={s.fieldLabel}>REASON FOR REPORT</Text>
+            <Text style={[s.fieldLabel, { color: colors.textMuted }]}>REASON FOR REPORT</Text>
             <View style={s.reasonList}>
               {REPORT_REASONS.map((r) => (
                 <Pressable
                   key={r}
-                  style={[s.reasonBtn, reportReason === r && s.reasonBtnActive]}
+                  style={[s.reasonBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', borderColor: colors.borderSubtle }, reportReason === r && s.reasonBtnActive]}
                   onPress={() => setReportReason(r)}
                 >
-                  <Text style={[s.reasonText, reportReason === r && s.reasonTextActive]}>{r}</Text>
+                  <Text style={[s.reasonText, { color: colors.textSecondary }, reportReason === r && s.reasonTextActive]}>{r}</Text>
                 </Pressable>
               ))}
             </View>
             <View style={s.modalActions}>
-              <Pressable style={s.modalBtnSec} onPress={() => { setReportEntryId(null); setReportReason(''); }}>
-                <Text style={s.modalBtnSecText}>Cancel</Text>
+              <Pressable style={[s.modalBtnSec, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderColor: colors.border }]} onPress={() => { setReportEntryId(null); setReportReason(''); }}>
+                <Text style={[s.modalBtnSecText, { color: colors.textSecondary }]}>Cancel</Text>
               </Pressable>
-              <Pressable style={s.modalBtnDanger} onPress={onSubmitReport}>
+              <Pressable style={[s.modalBtnDanger, { backgroundColor: colors.danger }]} onPress={onSubmitReport}>
                 <Text style={s.modalBtnPriText}>Submit Report</Text>
               </Pressable>
             </View>
@@ -493,8 +493,8 @@ export default function LeaderboardScreen() {
       {entryModalOpen && (
         <View style={s.modalOverlay}>
           <ScrollView contentContainerStyle={s.modalScroll}>
-            <View style={s.modal}>
-              <Text style={s.modalTitle}>{editingEntry ? 'Edit Entry' : 'Submit Entry'}</Text>
+            <View style={[s.modal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[s.modalTitle, { color: colors.text }]}>{editingEntry ? 'Edit Entry' : 'Submit Entry'}</Text>
 
               {/* Warning */}
               <View style={s.warningBox}>
@@ -505,33 +505,53 @@ export default function LeaderboardScreen() {
                 </Text>
               </View>
 
-              <Text style={s.fieldLabel}>FULL NAME</Text>
-              <TextInput style={s.input} value={entryName} onChangeText={setEntryName} placeholder="e.g. John Doe" placeholderTextColor="#475569" />
+              <Text style={[s.fieldLabel, { color: colors.textMuted }]}>FULL NAME</Text>
+              <TextInput 
+                style={[s.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]} 
+                value={entryName} 
+                onChangeText={setEntryName} 
+                placeholder="e.g. John Doe" 
+                placeholderTextColor={colors.textMuted} 
+              />
 
-              <Text style={s.fieldLabel}>CGPA (OUT OF 10)</Text>
-              <TextInput style={s.input} value={entryCgpa} onChangeText={setEntryCgpa} placeholder="e.g. 9.5" placeholderTextColor="#475569" keyboardType="decimal-pad" />
+              <Text style={[s.fieldLabel, { color: colors.textMuted }]}>CGPA (OUT OF 10)</Text>
+              <TextInput 
+                style={[s.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]} 
+                value={entryCgpa} 
+                onChangeText={setEntryCgpa} 
+                placeholder="e.g. 9.5" 
+                placeholderTextColor={colors.textMuted} 
+                keyboardType="decimal-pad" 
+              />
               {parseFloat(entryCgpa) === 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
-                  <Ionicons name="flash" size={14} color="#a5b4fc" />
+                  <Ionicons name="flash" size={14} color={colors.primaryLight} />
                   <Text style={s.promotedHint}>Promoted Student Mode Activated</Text>
                 </View>
               )}
 
-              <Text style={s.fieldLabel}>MARKS OBTAINED (MAX 700)</Text>
-              <TextInput style={s.inputMarks} value={entryMarks} onChangeText={setEntryMarks} placeholder="Enter total marks" placeholderTextColor="#475569" keyboardType="numeric" />
-              <Text style={s.fieldHint}>Used as a tie-breaker if CGPAs are identical.</Text>
+              <Text style={[s.fieldLabel, { color: colors.textMuted }]}>MARKS OBTAINED (MAX 700)</Text>
+              <TextInput 
+                style={[s.inputMarks, { backgroundColor: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)', borderColor: colors.primary, color: colors.text }]} 
+                value={entryMarks} 
+                onChangeText={setEntryMarks} 
+                placeholder="Enter total marks" 
+                placeholderTextColor={colors.textMuted} 
+                keyboardType="numeric" 
+              />
+              <Text style={[s.fieldHint, { color: colors.textMuted }]}>Used as a tie-breaker if CGPAs are identical.</Text>
 
               {entryError && <Text style={s.errorText}>{entryError}</Text>}
 
               <View style={s.modalActions}>
-                <Pressable style={s.modalBtnSec} onPress={closeEntryModal}>
-                  <Text style={s.modalBtnSecText}>Cancel</Text>
+                <Pressable style={[s.modalBtnSec, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderColor: colors.border }]} onPress={closeEntryModal}>
+                  <Text style={[s.modalBtnSecText, { color: colors.textSecondary }]}>Cancel</Text>
                 </Pressable>
-                <Pressable style={s.modalBtnPrimary} onPress={onSubmitEntry} disabled={entryStatus === 'loading'}>
+                <Pressable style={[s.modalBtnPrimary, { backgroundColor: colors.primary }]} onPress={onSubmitEntry} disabled={entryStatus === 'loading'}>
                   <Text style={s.modalBtnPriText}>{entryStatus === 'loading' ? 'Processing...' : editingEntry ? 'Update Entry' : 'Submit Entry'}</Text>
                 </Pressable>
               </View>
-              <Text style={s.footerNote}>{editingEntry ? 'You can update your details anytime' : 'Caution: One entry per student'}</Text>
+              <Text style={[s.footerNote, { color: colors.textMuted }]}>{editingEntry ? 'You can update your details anytime' : 'Caution: One entry per student'}</Text>
             </View>
           </ScrollView>
         </View>
