@@ -25,8 +25,16 @@ passport.use(new GoogleStrategy({
             }
 
             // Ensure the URL is absolute and high-res if it's a Google URL
-            if (profilePic && profilePic.includes('googleusercontent.com')) {
-                profilePic = profilePic.replace(/=s\d+([-a-zA-Z0-9_\-]+)*$/, '=s200-c');
+            if (profilePic) {
+                try {
+                    const parsedUrl = new URL(profilePic);
+                    const hostname = parsedUrl.hostname.toLowerCase();
+                    if (hostname === 'googleusercontent.com' || hostname.endsWith('.googleusercontent.com')) {
+                        profilePic = profilePic.replace(/=s\d+[^/]*$/, '=s200-c');
+                    }
+                } catch {
+                    // Invalid URL format, keep original
+                }
             }
 
             console.log(`[OAuth] Extracting profile for ${email}: ${profilePic ? 'Success' : 'No image'}`);
