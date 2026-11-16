@@ -13,6 +13,7 @@ const AppPromo = lazy(() => import('./pages/AppPromo'));
 const Boards = lazy(() => import('./pages/Boards'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Docs = lazy(() => import('./pages/Docs'));
+const About = lazy(() => import('./pages/About'));
 
 import Navbar from './components/Navbar';
 import NotificationPanel from './components/NotificationPanel';
@@ -205,6 +206,7 @@ function App() {
                     <Route path="/boards" element={<Boards />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/docs" element={<Docs />} />
+                    <Route path="/about" element={<About />} />
                   </Routes>
                 </Suspense>
               </div>
