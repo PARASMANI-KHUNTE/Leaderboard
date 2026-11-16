@@ -6,9 +6,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const passport = require('passport');
-const session = require('express-session');
-const MongoStore = require('connect-mongo').default || require('connect-mongo');
-const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 require('./config/passport');
@@ -143,30 +140,10 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use(cookieParser());
 app.use(express.json({ limit: '10kb' }));
 
-// Session Configuration with connect-mongo
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
-        collectionName: 'sessions',
-        ttl: 14 * 24 * 60 * 60,
-        autoRemove: 'native'
-    }),
-    cookie: {
-        maxAge: 14 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'strict' : 'lax'
-    }
-}));
-
+// Initialize Passport for OAuth authentication flows (stateless, token-based)
 app.use(passport.initialize());
-app.use(passport.session());
 
 // Cross-Site Request Forgery (CSRF) protection middleware
 app.use((req, res, next) => {

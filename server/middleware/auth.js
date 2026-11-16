@@ -2,12 +2,9 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models/User');
 
 const getTokenFromRequest = (req) => {
-    const bearerToken = req.header('Authorization')?.replace('Bearer ', '');
+    const bearerToken = req.header?.('Authorization')?.replace('Bearer ', '');
     if (bearerToken) return bearerToken;
-    
-    const cookieToken = req.cookies?.token;
-    if (cookieToken) return cookieToken;
-    
+
     return null;
 };
 

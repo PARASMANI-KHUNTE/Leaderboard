@@ -129,6 +129,7 @@ router.get('/google',
             scope: ['profile', 'email'],
             callbackURL,
             state,
+            session: false,
         })(req, res, next);
     });
 
@@ -141,7 +142,8 @@ router.get('/google/callback',
 
         passport.authenticate('google', { 
             failureRedirect: `${process.env.CLIENT_URL}/login?error=oauth_failed`,
-            callbackURL 
+            callbackURL,
+            session: false,
         })(req, res, next);
     },
     async (req, res) => {
@@ -218,7 +220,7 @@ router.post('/exchange', async (req, res) => {
 });
 
 router.get('/logout', (req, res) => {
-    req.logout(() => {
+    const handleLogout = () => {
         const isProduction = process.env.NODE_ENV === 'production';
         res.clearCookie('token', {
             httpOnly: true,
@@ -227,7 +229,13 @@ router.get('/logout', (req, res) => {
             path: '/',
         });
         res.redirect(process.env.CLIENT_URL);
-    });
+    };
+
+    if (typeof req.logout === 'function') {
+        req.logout(handleLogout);
+    } else {
+        handleLogout();
+    }
 });
 
 // Diagnostic endpoint — admin only, shows which critical env vars are configured (NOT the values)
