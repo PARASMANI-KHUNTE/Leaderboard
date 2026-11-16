@@ -28,7 +28,7 @@ export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const { isConnected } = useOffline();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { showConfirm, showAlert } = useThemedDialog();
   const { data: leaderboards, isLoading, isError, refetch } = useLeaderboards();
 
@@ -106,7 +106,11 @@ export default function Home() {
 
     return (
       <Pressable
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        style={({ pressed }) => [
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+          pressed && styles.cardPressed
+        ]}
         onPress={() => router.push(`/lb/${item.slug}`)}
       >
         <View style={styles.cardTop}>
@@ -117,7 +121,7 @@ export default function Home() {
             {canModify && (
               <>
                 <Pressable
-                  style={styles.cardActionBtn}
+                  style={[styles.cardActionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' }]}
                   onPress={(e) => {
                     e.stopPropagation?.();
                     showConfirm(
@@ -131,7 +135,7 @@ export default function Home() {
                   <Ionicons name="trash-outline" size={14} color="#fb7185" />
                 </Pressable>
                 <Pressable
-                  style={styles.cardActionBtn}
+                  style={[styles.cardActionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' }]}
                   onPress={(e) => {
                     e.stopPropagation?.();
                     const action = item.isLive ? 'Pause' : 'Resume';
@@ -172,12 +176,12 @@ export default function Home() {
           </View>
         </View>
 
-        <Text style={styles.cardName}>{item.name}</Text>
+        <Text style={[styles.cardName, { color: colors.text }]}>{item.name}</Text>
 
         <View style={styles.cardBadges}>
-          <View style={styles.cardMeta}>
-            <Ionicons name="people-outline" size={11} color="#94a3b8" />
-            <Text style={styles.cardMetaText}>{item.entryCount || 0} SUBMISSIONS</Text>
+          <View style={[styles.cardMeta, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)' }]}>
+            <Ionicons name="people-outline" size={11} color={colors.textSecondary} />
+            <Text style={[styles.cardMetaText, { color: colors.textSecondary }]}>{item.entryCount || 0} SUBMISSIONS</Text>
           </View>
           {item.entryMode ? (
             <View style={styles.cardModeBadge}>
@@ -187,14 +191,14 @@ export default function Home() {
             </View>
           ) : null}
           {item.ranking?.primaryField ? (
-            <View style={styles.cardFieldBadge}>
-              <Text style={styles.cardFieldText}>BY {item.ranking.primaryField.toUpperCase()}</Text>
+            <View style={[styles.cardFieldBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)', borderColor: colors.borderSubtle }]}>
+              <Text style={[styles.cardFieldText, { color: colors.textSecondary }]}>BY {item.ranking.primaryField.toUpperCase()}</Text>
             </View>
           ) : null}
         </View>
 
         {/* Top Performer Snippet */}
-        <View style={styles.topRankerBox}>
+        <View style={[styles.topRankerBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderColor: colors.borderSubtle }]}>
           {item.topEntry ? (
             <View style={styles.topRankerContent}>
               <View style={styles.topRankerLeft}>
@@ -203,7 +207,7 @@ export default function Home() {
                 </View>
                 <View style={{ flexShrink: 1 }}>
                   <Text style={styles.topRankerLabel}>RANK #1 LEADER</Text>
-                  <Text style={styles.topRankerName} numberOfLines={1}>{item.topEntry.name}</Text>
+                  <Text style={[styles.topRankerName, { color: colors.text }]} numberOfLines={1}>{item.topEntry.name}</Text>
                 </View>
               </View>
               <Text style={styles.topRankerScore}>
@@ -212,15 +216,15 @@ export default function Home() {
             </View>
           ) : (
             <View style={styles.topRankerEmpty}>
-              <Text style={styles.topRankerEmptyText}>Awaiting first submission</Text>
+              <Text style={[styles.topRankerEmptyText, { color: colors.textMuted }]}>Awaiting first submission</Text>
               <Text style={styles.topRankerEmptyAction}>Be #1 &rarr;</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.cardFooterText}>VIEW BOARD</Text>
-          <Ionicons name="arrow-forward-outline" size={14} color="#64748b" />
+        <View style={[styles.cardFooter, { borderTopColor: colors.borderSubtle }]}>
+          <Text style={[styles.cardFooterText, { color: colors.textMuted }]}>VIEW BOARD</Text>
+          <Ionicons name="arrow-forward-outline" size={14} color={colors.textMuted} />
         </View>
       </Pressable>
     );
@@ -228,12 +232,12 @@ export default function Home() {
 
   if (isError && isConnected) {
     return (
-      <View style={styles.centerWrap}>
-        <Ionicons name="alert-circle-outline" size={48} color="#fb7185" style={{ marginBottom: 12 }} />
-        <Text style={styles.errorTitle}>EliteBoards</Text>
-        <Text style={styles.errorSub}>Failed to load leaderboards.</Text>
+      <View style={[styles.centerWrap, { backgroundColor: colors.bg }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.danger} style={{ marginBottom: 12 }} />
+        <Text style={[styles.errorTitle, { color: colors.primaryLight }]}>EliteBoards</Text>
+        <Text style={[styles.errorSub, { color: colors.textSecondary }]}>Failed to load leaderboards.</Text>
         <Pressable 
-          style={[styles.retryBtn, { marginTop: 20 }]} 
+          style={[styles.retryBtn, { backgroundColor: colors.primary, marginTop: 20 }]} 
           onPress={() => refetch()}
         >
           <Ionicons name="refresh-outline" size={16} color="#ffffff" style={{ marginRight: 6 }} />
@@ -244,7 +248,7 @@ export default function Home() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <FlatList
         data={filteredBoards}
         keyExtractor={(it) => String(it._id)}
@@ -255,47 +259,47 @@ export default function Home() {
             {/* Header Title Toolbar */}
             <View style={styles.toolbar}>
               <View style={styles.titleWrap}>
-                <Ionicons name="trophy" size={24} color="#818cf8" />
-                <Text style={styles.titleText}>Leaderboards</Text>
+                <Ionicons name="trophy" size={24} color={colors.primaryLight} />
+                <Text style={[styles.titleText, { color: colors.text }]}>Leaderboards</Text>
               </View>
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{displayedBoards.length} TOTAL</Text>
+              <View style={[styles.countBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)', borderColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.2)' }]}>
+                <Text style={[styles.countBadgeText, { color: colors.primaryLight }]}>{displayedBoards.length} TOTAL</Text>
               </View>
             </View>
 
             {/* Offline or Banned Alert Banners */}
             {isBanned && (
               <View style={styles.bannerRow}>
-                <Ionicons name="ban-outline" size={14} color="#fb7185" />
-                <Text style={styles.banner}>Account banned — actions disabled</Text>
+                <Ionicons name="ban-outline" size={14} color={colors.danger} />
+                <Text style={[styles.banner, { color: colors.danger }]}>Account banned — actions disabled</Text>
               </View>
             )}
             {!isConnected && (
               <View style={styles.bannerRow}>
-                <Ionicons name="wifi-outline" size={14} color="#6366f1" />
-                <Text style={styles.banner}>Offline — showing cached data</Text>
+                <Ionicons name="wifi-outline" size={14} color={colors.primaryLight} />
+                <Text style={[styles.banner, { color: colors.primaryLight }]}>Offline — showing cached data</Text>
               </View>
             )}
 
             {/* Search Input Bar */}
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={16} color="#64748b" />
+            <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="search" size={16} color={colors.textMuted} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: colors.text }]}
                 placeholder="Search leaderboards by name..."
-                placeholderTextColor="#64748b"
+                placeholderTextColor={colors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
               {searchQuery.length > 0 && (
                 <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color="#64748b" />
+                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
                 </Pressable>
               )}
             </View>
 
             {/* Status Filter Tabs */}
-            <View style={styles.tabsRow}>
+            <View style={[styles.tabsRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.03)', borderColor: colors.borderSubtle }]}>
               {[
                 { id: 'all', label: 'All' },
                 { id: 'live', label: 'Live' },
@@ -305,14 +309,14 @@ export default function Home() {
                   key={tab.id}
                   style={[
                     styles.tabBtn,
-                    statusFilter === tab.id && styles.tabBtnActive,
+                    statusFilter === tab.id && { backgroundColor: colors.primary },
                   ]}
                   onPress={() => setStatusFilter(tab.id as any)}
                 >
                   <Text
                     style={[
                       styles.tabText,
-                      statusFilter === tab.id && styles.tabTextActive,
+                      { color: statusFilter === tab.id ? '#ffffff' : colors.textSecondary },
                     ]}
                   >
                     {tab.label}
@@ -325,13 +329,13 @@ export default function Home() {
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.emptyWrap}>
-              <ActivityIndicator color="#6366f1" size="large" />
-              <Text style={styles.loadingText}>LOADING_DATA...</Text>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={[styles.loadingText, { color: colors.textMuted }]}>LOADING_DATA...</Text>
             </View>
           ) : (
             <View style={styles.emptyWrap}>
-              <Ionicons name="search-outline" size={36} color="#475569" />
-              <Text style={styles.emptyText}>
+              <Ionicons name="search-outline" size={36} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                 {searchQuery || statusFilter !== 'all' 
                   ? 'No leaderboards match the current filter.' 
                   : 'No leaderboards found. Be the first to create one!'}
@@ -344,7 +348,7 @@ export default function Home() {
       {/* Floating Action Button (FAB) to create board */}
       {canCreate && (
         <Pressable
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: colors.primary }]}
           onPress={() => {
             if (!user) router.replace('/login');
             else setCreateOpen(true);
@@ -358,19 +362,19 @@ export default function Home() {
       {/* Create Modal */}
       {createOpen && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
+          <View style={[styles.modal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New Leaderboard</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Leaderboard</Text>
               <Pressable onPress={() => { setCreateOpen(false); setCreateName(''); }}>
-                <Ionicons name="close" size={20} color="#94a3b8" />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
             <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>BOARD NAME</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>BOARD NAME</Text>
               <TextInput
                 placeholder="e.g. Batch 2025 MCS"
-                placeholderTextColor="#475569"
-                style={styles.input}
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { backgroundColor: colors.bg, borderColor: colors.border, color: colors.text }]}
                 value={createName}
                 onChangeText={setCreateName}
                 autoFocus
@@ -378,13 +382,13 @@ export default function Home() {
             </View>
             <View style={styles.modalActions}>
               <Pressable
-                style={[styles.modalBtn, styles.modalBtnSecondary]}
+                style={[styles.modalBtn, styles.modalBtnSecondary, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderColor: colors.border }]}
                 onPress={() => { setCreateOpen(false); setCreateName(''); }}
               >
-                <Text style={styles.modalBtnSecText}>Cancel</Text>
+                <Text style={[styles.modalBtnSecText, { color: colors.textSecondary }]}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, styles.modalBtnPrimary]}
+                style={[styles.modalBtn, { backgroundColor: colors.primary, flex: 2 }]}
                 onPress={onCreate}
                 disabled={createLeaderboard.isPending}
               >

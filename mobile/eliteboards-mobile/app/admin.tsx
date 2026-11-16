@@ -24,10 +24,11 @@ import { useTheme } from '../src/theme/ThemeContext';
 type TabKey = 'reports' | 'users' | 'feedback';
 
 const ProfileImage = ({ src, name }: { src?: string; name?: string }) => {
+  const { colors } = useTheme();
   if (src) return <Image source={{ uri: src }} style={s.avatar} />;
   return (
-    <View style={s.avatarPlaceholder}>
-      <Text style={s.avatarText}>{name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
+    <View style={[s.avatarPlaceholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[s.avatarText, { color: colors.textSecondary }]}>{name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
     </View>
   );
 };
@@ -36,7 +37,7 @@ export default function AdminScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { isConnected } = useOffline();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { showConfirm, showAlert } = useThemedDialog();
 
   const { tab: urlTab } = useLocalSearchParams<{ tab?: string }>();
@@ -82,19 +83,19 @@ export default function AdminScreen() {
   const renderReport = ({ item }: { item: any }) => {
     const entry = item.entryId;
     return (
-      <View style={s.card}>
+      <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={s.cardHeader}>
           <View style={s.reasonBadge}>
             <Text style={s.reasonText}>{item.reason ?? 'REPORTED'}</Text>
           </View>
-          <Text style={s.timestamp}>
+          <Text style={[s.timestamp, { color: colors.textMuted }]}>
             {item.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}
           </Text>
         </View>
 
         <View style={s.cardBody}>
-          <Text style={s.entryName}>{entry?.name ?? 'Deleted Entry'}</Text>
-          <Text style={s.reporterText}>
+          <Text style={[s.entryName, { color: colors.text }]}>{entry?.name ?? 'Deleted Entry'}</Text>
+          <Text style={[s.reporterText, { color: colors.textSecondary }]}>
             Reported by: <Text style={s.reporterSub}>{item.reporterId?.displayName ?? 'Unknown'}</Text>
           </Text>
         </View>
@@ -115,7 +116,7 @@ export default function AdminScreen() {
             <Text style={s.btnText}>DELETE ENTRY</Text>
           </Pressable>
           <Pressable
-            style={[s.actionBtn, s.btnSec, disabled && s.btnDisabled]}
+            style={[s.actionBtn, s.btnSec, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }, disabled && s.btnDisabled]}
             disabled={disabled}
             onPress={() => resolveReport.mutate({ reportId: item._id, action: 'ignore' })}
           >
@@ -123,7 +124,7 @@ export default function AdminScreen() {
           </Pressable>
           {entry?.userId && (
             <Pressable
-              style={[s.actionBtn, s.btnOutline, disabled && s.btnDisabled]}
+              style={[s.actionBtn, s.btnOutline, { borderColor: colors.border }, disabled && s.btnDisabled]}
               disabled={disabled}
               onPress={() => toggleBan.mutate(entry.userId)}
             >
@@ -138,23 +139,23 @@ export default function AdminScreen() {
   const renderUser = ({ item }: { item: any }) => {
     const isSelf = String(item._id) === String(user?.id);
     return (
-      <View style={[s.card, item.isBanned && s.cardBanned]}>
+      <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }, item.isBanned && s.cardBanned]}>
         <View style={s.userInfoRow}>
           <ProfileImage src={item.profilePicture} name={item.displayName} />
           <View style={s.userDetails}>
             <View style={s.nameBadgeRow}>
-              <Text style={s.userName}>{item.displayName}</Text>
+              <Text style={[s.userName, { color: colors.text }]}>{item.displayName}</Text>
               {item.isAdmin && <View style={s.adminBadge}><Text style={s.adminBadgeText}>ADMIN</Text></View>}
             </View>
-            <Text style={s.userEmail}>{item.email}</Text>
+            <Text style={[s.userEmail, { color: colors.textSecondary }]}>{item.email}</Text>
           </View>
         </View>
 
-        <View style={s.userStatsRow}>
+        <View style={[s.userStatsRow, { borderTopColor: colors.borderSubtle }]}>
           <View style={s.userStat}>
             <Ionicons name="flag" size={14} color="#ef4444" />
             <Text style={s.userStatVal}>{item.reportCount || 0}</Text>
-            <Text style={s.userStatLabel}>REPORTS</Text>
+            <Text style={[s.userStatLabel, { color: colors.textMuted }]}>REPORTS</Text>
           </View>
           {!item.isAdmin && !isSelf && (
             <View style={s.userActions}>
@@ -188,24 +189,24 @@ export default function AdminScreen() {
 
   const renderFeedback = ({ item }: { item: any }) => {
     return (
-      <View style={[s.card, item.isRead && s.cardRead]}>
+      <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }, item.isRead && s.cardRead]}>
         <View style={s.cardHeader}>
           <View style={s.feedbackMeta}>
             <View style={[s.unreadDot, item.isRead && s.readDot]} />
-            <Text style={s.feedbackUser}>{item.userName ?? 'Anonymous'}</Text>
+            <Text style={[s.feedbackUser, { color: colors.text }]}>{item.userName ?? 'Anonymous'}</Text>
           </View>
-          <Text style={s.timestamp}>
+          <Text style={[s.timestamp, { color: colors.textMuted }]}>
             {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
           </Text>
         </View>
-        <Text style={s.feedbackText}>"{item.text}"</Text>
+        <Text style={[s.feedbackText, { color: colors.textSecondary }]}>"{item.text}"</Text>
         <View style={s.feedbackActions}>
           <Pressable
-             style={[s.iconBtn, disabled && s.btnDisabled]}
+             style={[s.iconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }, disabled && s.btnDisabled]}
              disabled={disabled}
              onPress={() => toggleFeedbackRead.mutate(item._id)}
           >
-            <Ionicons name={item.isRead ? "eye-off-outline" : "checkmark-circle-outline"} size={18} color={item.isRead ? "#475569" : "#22c55e"} />
+            <Ionicons name={item.isRead ? "eye-off-outline" : "checkmark-circle-outline"} size={18} color={item.isRead ? colors.textMuted : "#22c55e"} />
           </Pressable>
           <Pressable
              style={[s.iconBtn, s.iconBtnDanger, disabled && s.btnDisabled]}
@@ -227,34 +228,49 @@ export default function AdminScreen() {
   };
 
   return (
-    <View style={s.screen}>
+    <View style={[s.screen, { backgroundColor: colors.bg }]}>
       {(isBanned || !isConnected) && (
         <View style={s.header}>
           {isBanned && (
             <View style={s.bannerRow}>
-              <Ionicons name="ban" size={12} color="#fb7185" />
-              <Text style={s.banner}>Actions disabled: Account Banned</Text>
+              <Ionicons name="ban" size={12} color={colors.danger} />
+              <Text style={[s.banner, { color: colors.danger }]}>Actions disabled: Account Banned</Text>
             </View>
           )}
           {!isConnected && (
             <View style={s.bannerRow}>
-              <Ionicons name="wifi-outline" size={12} color="#fb7185" />
-              <Text style={s.banner}>Actions disabled: Offline</Text>
+              <Ionicons name="wifi-outline" size={12} color={colors.primaryLight} />
+              <Text style={[s.banner, { color: colors.primaryLight }]}>Actions disabled: Offline</Text>
             </View>
           )}
         </View>
       )}
 
       {/* Persistent Tabs */}
-      <View style={s.tabsRow}>
-        <Pressable style={[s.tab, tab === 'reports' && s.tabActive]} onPress={() => setTab('reports')}>
-          <Text style={[s.tabText, tab === 'reports' && s.tabTextActive]}>REPORTS ({reportsList.length})</Text>
+      <View style={[s.tabsRow, { borderBottomColor: colors.borderSubtle }]}>
+        <Pressable 
+          style={[s.tab, tab === 'reports' && { borderBottomColor: colors.primary }]} 
+          onPress={() => setTab('reports')}
+        >
+          <Text style={[s.tabText, { color: colors.textMuted }, tab === 'reports' && { color: colors.primaryLight }]}>
+            REPORTS ({reportsList.length})
+          </Text>
         </Pressable>
-        <Pressable style={[s.tab, tab === 'users' && s.tabActive]} onPress={() => setTab('users')}>
-          <Text style={[s.tabText, tab === 'users' && s.tabTextActive]}>USERS ({usersList.length})</Text>
+        <Pressable 
+          style={[s.tab, tab === 'users' && { borderBottomColor: colors.primary }]} 
+          onPress={() => setTab('users')}
+        >
+          <Text style={[s.tabText, { color: colors.textMuted }, tab === 'users' && { color: colors.primaryLight }]}>
+            USERS ({usersList.length})
+          </Text>
         </Pressable>
-        <Pressable style={[s.tab, tab === 'feedback' && s.tabActive]} onPress={() => setTab('feedback')}>
-          <Text style={[s.tabText, tab === 'feedback' && s.tabTextActive]}>FEEDBACK ({feedbackList.length})</Text>
+        <Pressable 
+          style={[s.tab, tab === 'feedback' && { borderBottomColor: colors.primary }]} 
+          onPress={() => setTab('feedback')}
+        >
+          <Text style={[s.tabText, { color: colors.textMuted }, tab === 'feedback' && { color: colors.primaryLight }]}>
+            FEEDBACK ({feedbackList.length})
+          </Text>
         </Pressable>
       </View>
 
@@ -263,9 +279,9 @@ export default function AdminScreen() {
         {tab === 'users' && (
           <View style={s.searchWrap}>
             <TextInput
-              style={s.searchInput}
+              style={[s.searchInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Search students by name or email..."
-              placeholderTextColor="#475569"
+              placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
             />
@@ -274,8 +290,8 @@ export default function AdminScreen() {
 
         {((tab === 'reports' && loadingReports) || (tab === 'users' && loadingUsers) || (tab === 'feedback' && loadingFeedback)) ? (
           <View style={s.centerWrap}>
-            <ActivityIndicator color="#6366f1" size="large" />
-            <Text style={s.loadingText}>LOADING_PANEL...</Text>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={[s.loadingText, { color: colors.textMuted }]}>LOADING_PANEL...</Text>
           </View>
         ) : (
           <FlatList
@@ -285,7 +301,7 @@ export default function AdminScreen() {
             contentContainerStyle={s.listPadding}
             ListEmptyComponent={
               <View style={s.centerWrap}>
-                <Text style={s.emptyText}>Nothing to show here. All clear!</Text>
+                <Text style={[s.emptyText, { color: colors.textMuted }]}>Nothing to show here. All clear!</Text>
               </View>
             }
           />

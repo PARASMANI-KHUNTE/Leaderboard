@@ -28,7 +28,7 @@ export default function Profile() {
     const [joinedBoards, setJoinedBoards] = useState<any[]>([]);
     const [managedBoards, setManagedBoards] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { showAlert, showConfirm } = useThemedDialog();
 
     // Name update state
@@ -161,22 +161,22 @@ export default function Profile() {
     if (!user) return null;
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <ScrollView style={[styles.container, { backgroundColor: colors.bg }]} contentContainerStyle={styles.content}>
             {/* Header / Identity Card */}
             <LinearGradient
-                colors={['rgba(79, 70, 229, 0.2)', 'rgba(2, 6, 23, 0)']}
+                colors={isDark ? ['rgba(79, 70, 229, 0.2)', 'rgba(2, 6, 23, 0)'] : ['rgba(79, 70, 229, 0.12)', 'rgba(248, 250, 252, 0)']}
                 style={styles.headerGradient}
             >
                 <View style={styles.userCard}>
                     <View style={styles.avatarWrap}>
                         {user.picture ? (
-                            <Image source={{ uri: user.picture }} style={styles.avatar} />
+                            <Image source={{ uri: user.picture }} style={[styles.avatar, { borderColor: colors.border }]} />
                         ) : (
-                            <View style={styles.avatarPlaceholder}>
-                                <Text style={styles.avatarPlaceholderText}>{user.name?.charAt(0) || '?'}</Text>
+                            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                <Text style={[styles.avatarPlaceholderText, { color: colors.textSecondary }]}>{user.name?.charAt(0) || '?'}</Text>
                             </View>
                         )}
-                        <View style={styles.statusBadge}>
+                        <View style={[styles.statusBadge, { borderColor: colors.bg, backgroundColor: colors.primary }]}>
                             <Ionicons name="flash" size={12} color="white" />
                         </View>
                     </View>
@@ -185,16 +185,16 @@ export default function Profile() {
                     {isEditingName ? (
                         <View style={styles.editNameRow}>
                             <TextInput
-                                style={styles.nameInput}
+                                style={[styles.nameInput, { backgroundColor: colors.surface, borderColor: colors.primary, color: colors.text }]}
                                 value={nameInput}
                                 onChangeText={setNameInput}
                                 placeholder="Enter display name"
-                                placeholderTextColor="#64748b"
+                                placeholderTextColor={colors.textMuted}
                                 autoFocus
                                 maxLength={50}
                             />
                             <Pressable 
-                                style={[styles.editIconBtn, styles.saveBtn]} 
+                                style={[styles.editIconBtn, styles.saveBtn, { backgroundColor: colors.primary }]} 
                                 onPress={handleSaveName}
                                 disabled={savingName}
                             >
@@ -205,47 +205,47 @@ export default function Profile() {
                                 )}
                             </Pressable>
                             <Pressable 
-                                style={[styles.editIconBtn, styles.cancelBtn]} 
+                                style={[styles.editIconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} 
                                 onPress={() => {
                                     setNameInput(user.name || '');
                                     setIsEditingName(false);
                                 }}
                             >
-                                <Ionicons name="close" size={18} color="#94a3b8" />
+                                <Ionicons name="close" size={18} color={colors.textSecondary} />
                             </Pressable>
                         </View>
                     ) : (
                         <View style={styles.nameRow}>
-                            <Text style={styles.userName}>{user.name}</Text>
+                            <Text style={[styles.userName, { color: colors.text }]}>{user.name}</Text>
                             <Pressable 
-                                style={styles.editNameTrigger} 
+                                style={[styles.editNameTrigger, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)' }]} 
                                 onPress={() => setIsEditingName(true)}
                             >
-                                <Ionicons name="pencil" size={14} color="#818cf8" />
+                                <Ionicons name="pencil" size={14} color={colors.primaryLight} />
                             </Pressable>
                         </View>
                     )}
 
-                    <Text style={styles.userEmail}>{user.email}</Text>
+                    <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
 
                     <View style={styles.statsRow}>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statLabel}>HEARTS EARNED</Text>
+                        <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={[styles.statLabel, { color: colors.textMuted }]}>HEARTS EARNED</Text>
                             <View style={styles.statValueWrap}>
                                 <Ionicons name="heart" size={14} color="#f87171" />
-                                <Text style={styles.statValue}>{user.stats?.heartsEarned || 0}</Text>
+                                <Text style={[styles.statValue, { color: colors.text }]}>{user.stats?.heartsEarned || 0}</Text>
                             </View>
                         </View>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statLabel}>ENTRIES</Text>
+                        <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={[styles.statLabel, { color: colors.textMuted }]}>ENTRIES</Text>
                             <View style={styles.statValueWrap}>
                                 <Ionicons name="pulse" size={14} color="#10b981" />
-                                <Text style={styles.statValue}>{user.stats?.totalSubmissions || 0}</Text>
+                                <Text style={[styles.statValue, { color: colors.text }]}>{user.stats?.totalSubmissions || 0}</Text>
                             </View>
                         </View>
-                        <View style={styles.statBox}>
-                            <Text style={styles.statLabel}>ROLE</Text>
-                            <Text style={[styles.statValue, { color: user.isAdmin ? '#a855f7' : '#818cf8' }]}>
+                        <View style={[styles.statBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={[styles.statLabel, { color: colors.textMuted }]}>ROLE</Text>
+                            <Text style={[styles.statValue, { color: user.isAdmin ? '#a855f7' : colors.primaryLight }]}>
                                 {user.isAdmin ? 'Admin' : 'Competitive'}
                             </Text>
                         </View>
@@ -256,32 +256,32 @@ export default function Profile() {
             {/* Manage My Created Leaderboards */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>MY CREATED LEADERBOARDS</Text>
-                    <Text style={styles.sectionCount}>{managedBoards.length} MANAGED</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>MY CREATED LEADERBOARDS</Text>
+                    <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{managedBoards.length} MANAGED</Text>
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator color="#6366f1" style={{ marginTop: 12 }} />
+                    <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
                 ) : managedBoards.length > 0 ? (
                     <View style={styles.boardsGrid}>
                         {managedBoards.map((board) => (
-                            <View key={board._id} style={styles.managedCard}>
+                            <View key={board._id} style={[styles.managedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                 <Pressable 
                                     style={styles.managedMain}
                                     onPress={() => router.push(`/lb/${board.slug}`)}
                                 >
-                                    <View style={styles.boardIconWrap}>
-                                        <Ionicons name="trophy" size={22} color="#818cf8" />
+                                    <View style={[styles.boardIconWrap, { backgroundColor: isDark ? 'rgba(2, 6, 23, 0.5)' : 'rgba(0,0,0,0.03)', borderColor: colors.borderSubtle }]}>
+                                        <Ionicons name="trophy" size={22} color={colors.primaryLight} />
                                     </View>
                                     <View style={styles.boardInfo}>
-                                        <Text style={styles.boardName} numberOfLines={1}>{board.name}</Text>
+                                        <Text style={[styles.boardName, { color: colors.text }]} numberOfLines={1}>{board.name}</Text>
                                         <View style={styles.boardMetaRow}>
                                             <View style={[styles.statusDot, { backgroundColor: board.isLive ? '#10b981' : '#f59e0b' }]} />
                                             <Text style={[styles.statusText, { color: board.isLive ? '#10b981' : '#f59e0b' }]}>
                                                 {board.isLive ? 'LIVE' : 'MAINTENANCE'}
                                             </Text>
-                                            <Text style={styles.metaDivider}>•</Text>
-                                            <Text style={styles.metaSubmissions}>{board.entryCount || 0} entries</Text>
+                                            <Text style={[styles.metaDivider, { color: colors.textMuted }]}>•</Text>
+                                            <Text style={[styles.metaSubmissions, { color: colors.textSecondary }]}>{board.entryCount || 0} entries</Text>
                                         </View>
                                     </View>
                                 </Pressable>
@@ -308,16 +308,16 @@ export default function Profile() {
                         ))}
                     </View>
                 ) : (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="create-outline" size={28} color="#475569" />
-                        <Text style={styles.emptyTitle}>NO MANAGED BOARDS</Text>
-                        <Text style={styles.emptyText}>You haven't created any leaderboards yet.</Text>
+                    <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Ionicons name="create-outline" size={28} color={colors.textMuted} />
+                        <Text style={[styles.emptyTitle, { color: colors.text }]}>NO MANAGED BOARDS</Text>
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>You haven't created any leaderboards yet.</Text>
                         <Pressable 
-                            style={styles.exploreBtn}
+                            style={[styles.exploreBtn, { backgroundColor: colors.primary }]}
                             onPress={() => router.replace('/')}
                         >
-                            <Ionicons name="add" size={14} color="#020617" />
-                            <Text style={styles.exploreBtnText}>CREATE ON HOME</Text>
+                            <Ionicons name="add" size={14} color="#ffffff" />
+                            <Text style={[styles.exploreBtnText, { color: '#ffffff' }]}>CREATE ON HOME</Text>
                         </Pressable>
                     </View>
                 )}
@@ -326,25 +326,25 @@ export default function Profile() {
             {/* Competitive Activity (Joined Boards) */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>COMPETITIVE ACTIVITY</Text>
-                    <Text style={styles.sectionCount}>{joinedBoards.length} JOINED</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>COMPETITIVE ACTIVITY</Text>
+                    <Text style={[styles.sectionCount, { color: colors.textMuted }]}>{joinedBoards.length} JOINED</Text>
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator color="#6366f1" style={{ marginTop: 12 }} />
+                    <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
                 ) : joinedBoards.length > 0 ? (
                     <View style={styles.boardsGrid}>
                         {joinedBoards.map((board, idx) => (
                             <Pressable 
                                 key={idx} 
-                                style={styles.boardCard}
+                                style={[styles.boardCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                                 onPress={() => router.push(`/lb/${board.slug}`)}
                             >
-                                <View style={styles.boardIconWrap}>
-                                    <Ionicons name="ribbon-outline" size={24} color="#818cf8" />
+                                <View style={[styles.boardIconWrap, { backgroundColor: isDark ? 'rgba(2, 6, 23, 0.5)' : 'rgba(0,0,0,0.03)', borderColor: colors.borderSubtle }]}>
+                                    <Ionicons name="ribbon-outline" size={24} color={colors.primaryLight} />
                                 </View>
                                 <View style={styles.boardInfo}>
-                                    <Text style={styles.boardName} numberOfLines={1}>{board.name}</Text>
+                                    <Text style={[styles.boardName, { color: colors.text }]} numberOfLines={1}>{board.name}</Text>
                                     <View style={styles.boardStatus}>
                                         <View style={[styles.statusDot, { backgroundColor: board.isLive ? '#10b981' : '#f87171' }]} />
                                         <Text style={[styles.statusText, { color: board.isLive ? '#10b981' : '#f87171' }]}>
@@ -352,21 +352,21 @@ export default function Profile() {
                                         </Text>
                                     </View>
                                 </View>
-                                <Ionicons name="chevron-forward" size={16} color="#475569" />
+                                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                             </Pressable>
                         ))}
                     </View>
                 ) : (
-                    <View style={styles.emptyCard}>
-                        <Ionicons name="search-outline" size={28} color="#475569" />
-                        <Text style={styles.emptyTitle}>NO PARTICIPATION YET</Text>
-                        <Text style={styles.emptyText}>You haven't submitted scores to any competitive boards yet.</Text>
+                    <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Ionicons name="search-outline" size={28} color={colors.textMuted} />
+                        <Text style={[styles.emptyTitle, { color: colors.text }]}>NO PARTICIPATION YET</Text>
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>You haven't submitted scores to any competitive boards yet.</Text>
                         <Pressable 
-                            style={styles.exploreBtn}
+                            style={[styles.exploreBtn, { backgroundColor: colors.primary }]}
                             onPress={() => router.replace('/')}
                         >
-                            <Ionicons name="trophy" size={14} color="#020617" />
-                            <Text style={styles.exploreBtnText}>BROWSE LEADERBOARDS</Text>
+                            <Ionicons name="trophy" size={14} color="#ffffff" />
+                            <Text style={[styles.exploreBtnText, { color: '#ffffff' }]}>BROWSE LEADERBOARDS</Text>
                         </Pressable>
                     </View>
                 )}
@@ -375,16 +375,16 @@ export default function Profile() {
             {/* Account Management & Deletion */}
             <View style={styles.footer}>
                 <View style={styles.actionsRow}>
-                    <Pressable style={styles.actionBtn} onPress={logout}>
-                        <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-                        <Text style={styles.actionBtnText}>SIGN OUT</Text>
+                    <Pressable style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={logout}>
+                        <Ionicons name="log-out-outline" size={18} color={colors.textSecondary} />
+                        <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>SIGN OUT</Text>
                     </Pressable>
-                    <Pressable style={[styles.actionBtn, styles.dangerBtn]} onPress={handleDeleteAccount}>
-                        <Ionicons name="trash-outline" size={18} color="#f87171" />
-                        <Text style={[styles.actionBtnText, { color: '#f87171' }]}>DELETE ACCOUNT</Text>
+                    <Pressable style={[styles.actionBtn, styles.dangerBtn, { backgroundColor: colors.dangerBg, borderColor: colors.danger }]} onPress={handleDeleteAccount}>
+                        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                        <Text style={[styles.actionBtnText, { color: colors.danger }]}>DELETE ACCOUNT</Text>
                     </Pressable>
                 </View>
-                <Text style={styles.versionText}>ELITEBOARDS V1.1.0 • SECURE JWT SESSION</Text>
+                <Text style={[styles.versionText, { color: colors.textMuted }]}>ELITEBOARDS V1.1.0 • SECURE JWT SESSION</Text>
             </View>
         </ScrollView>
     );
