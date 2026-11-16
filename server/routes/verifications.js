@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const multer = require('multer');
 const Leaderboard = require('../models/LeaderboardCollection');
 const LeaderboardEntry = require('../models/Leaderboard');
@@ -214,11 +215,12 @@ router.post(
             const idCardFile = req.files?.idCard?.[0];
             const gradeCardFile = req.files?.gradeCard?.[0];
 
-            if (!leaderboardId) {
-                return res.status(400).json({ message: 'Leaderboard ID is required' });
+            if (!leaderboardId || !mongoose.Types.ObjectId.isValid(leaderboardId)) {
+                return res.status(400).json({ message: 'Valid Leaderboard ID is required' });
             }
+            const safeLeaderboardId = new mongoose.Types.ObjectId(String(leaderboardId));
 
-            const leaderboard = await Leaderboard.findById(leaderboardId);
+            const leaderboard = await Leaderboard.findById(safeLeaderboardId);
             if (!leaderboard) {
                 return res.status(404).json({ message: 'Leaderboard not found' });
             }
@@ -230,7 +232,7 @@ router.post(
 
             const existingEntry = await LeaderboardEntry.findOne({
                 userId: req.user._id,
-                leaderboardId,
+                leaderboardId: safeLeaderboardId,
             });
             if (existingEntry) {
                 return res.status(400).json({ message: 'You have already made an entry in this leaderboard' });
@@ -332,7 +334,7 @@ router.post(
             });
 
             const entry = await LeaderboardEntry.create({
-                leaderboardId,
+                leaderboardId: leaderboard._id,
                 userId: req.user._id,
                 name: gradeCardExtraction.parsed.fullName || req.user.displayName,
                 cgpa: gradeCardExtraction.parsed.cgpa,
@@ -348,17 +350,19 @@ router.post(
             await submission.save();
 
             // Increment entryCount atomically on the leaderboard collection
-            await Leaderboard.findByIdAndUpdate(leaderboardId, { $inc: { entryCount: 1 } }).catch(() => {});
+            await Leaderboard.findByIdAndUpdate(leaderboard._id, { $inc: { entryCount: 1 } }).catch(() => {});
 
             const { getRedisClient, bumpVersion } = require('../config/redis');
             const redisClient = await getRedisClient().catch(() => null);
             if (redisClient) {
-                await syncEntryToZSet(redisClient, leaderboardId, entry).catch(() => {});
-                await bumpVersion(redisClient, `lb:${leaderboardId}:version`).catch(() => {});
+                await syncEntryToZSet(redisClient, leaderboard._id, entry).catch(() => {});
+                await bumpVersion(redisClient, `lb:${leaderboard._id}:version`).catch(() => {});
             }
 
             const io = req.app.get('socketio');
-            io.to(`leaderboard:${leaderboardId}`).emit('leaderboardChanged', { leaderboardId });
+            if (io) {
+                io.to(`leaderboard:${leaderboard._id}`).emit('leaderboardChanged', { leaderboardId: leaderboard._id });
+            }
 
             res.status(201).json({
                 submission,

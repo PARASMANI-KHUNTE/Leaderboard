@@ -53,11 +53,20 @@ function parseOAuthState(state) {
 
 function getSafeMobileRedirect(url) {
     const fallback = process.env.MOBILE_DEEPLINK_URL || 'eliteboards://login-success';
-    const candidate = String(url || fallback).trim();
+    if (!url || typeof url !== 'string') return fallback;
     try {
-        const parsed = new URL(candidate);
-        const allowed = parsed.protocol === 'eliteboards:' || parsed.protocol === 'exp:';
-        return allowed ? candidate : fallback;
+        const parsed = new URL(url.trim());
+        if (parsed.protocol === 'eliteboards:') {
+            return 'eliteboards://login-success';
+        }
+        if (parsed.protocol === 'exp:') {
+            const host = parsed.hostname;
+            const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+            if (isLocal && (parsed.pathname === '/--/login-success' || parsed.pathname.endsWith('/login-success'))) {
+                return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+            }
+        }
+        return fallback;
     } catch {
         return fallback;
     }

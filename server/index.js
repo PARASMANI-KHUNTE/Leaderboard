@@ -168,6 +168,34 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Cross-Site Request Forgery (CSRF) protection middleware
+app.use((req, res, next) => {
+    // Safe HTTP methods do not mutate server state
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        return next();
+    }
+    // Requests carrying explicit Bearer authorization header are immune to browser ambient CSRF
+    if (req.headers['authorization'] && req.headers['authorization'].startsWith('Bearer ')) {
+        return next();
+    }
+    // Allow OAuth callback and exchange endpoints
+    if (req.path.startsWith('/auth/google') || req.path === '/auth/exchange') {
+        return next();
+    }
+    const origin = req.headers['origin'];
+    const referer = req.headers['referer'];
+    let requestOrigin = null;
+    try {
+        if (origin) requestOrigin = new URL(origin).origin;
+        else if (referer) requestOrigin = new URL(referer).origin;
+    } catch {}
+
+    if (requestOrigin && !isAllowedOrigin(requestOrigin)) {
+        return res.status(403).json({ message: 'CSRF validation failed: untrusted origin' });
+    }
+    next();
+});
+
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 const createHybridKey = (req) => {

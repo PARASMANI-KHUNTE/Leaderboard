@@ -328,7 +328,12 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
         if (user.isBanned) return res.status(403).json({ message: 'Your account has been banned' });
 
-        const leaderboard = await Leaderboard.findById(leaderboardId);
+        if (!mongoose.Types.ObjectId.isValid(leaderboardId)) {
+            return res.status(400).json({ message: 'Invalid leaderboard ID format' });
+        }
+        const safeLeaderboardId = new mongoose.Types.ObjectId(String(leaderboardId));
+
+        const leaderboard = await Leaderboard.findById(safeLeaderboardId);
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
         if (!leaderboard.isLive) return res.status(403).json({ message: 'This leaderboard is currently closed for submissions' });
         if (leaderboard.entryMode === 'upload') {
@@ -338,14 +343,14 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
         // Acquire 5-second distributed idempotency lock to prevent double-submits
         redisClient = await getRedisClient().catch(() => null);
         if (redisClient) {
-            lockKey = `lock:submit:${leaderboardId}:${user._id}`;
+            lockKey = `lock:submit:${safeLeaderboardId}:${user._id}`;
             const acquired = await cacheSetNX(redisClient, lockKey, '1', 5);
             if (!acquired) {
                 return res.status(429).json({ message: 'Submission already processing, please wait' });
             }
         }
 
-        const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId }).select('_id');
+        const existingEntry = await LeaderboardEntry.findOne({ userId: user._id, leaderboardId: safeLeaderboardId }).select('_id');
         if (existingEntry) {
             if (lockKey && redisClient) await cacheDel(redisClient, lockKey);
             return res.status(400).json({ message: 'You have already made an entry in this leaderboard' });
@@ -363,7 +368,7 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
 
         const rankingPayload = buildEntryRankingPayload(leaderboard, metrics);
         const entry = new LeaderboardEntry({
-            leaderboardId,
+            leaderboardId: safeLeaderboardId,
             userId: user._id,
             name: String(name).trim().slice(0, 100),
             cgpa: metrics.cgpa,
