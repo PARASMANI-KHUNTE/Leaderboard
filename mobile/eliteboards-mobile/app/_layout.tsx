@@ -16,6 +16,7 @@ import { io } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
+import SidebarDrawer from '../src/components/SidebarDrawer';
 
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
 
@@ -40,24 +41,36 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isHome = pathname === '/' || pathname === '';
 
   return (
     <>
       <View style={[styles.nav, { paddingTop: insets.top + 6 }]}>
-        {/* Logo */}
-        <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
-          <Image 
-            source={require('../assets/logo.png')} 
-            style={styles.logoImageSmall} 
-            resizeMode="contain"
-          />
-          <View>
-            <Text style={styles.logoText}>EliteBoards</Text>
-            <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
-          </View>
-        </Pressable>
+        {/* Left: Hamburger Drawer + Logo */}
+        <View style={styles.navLeft}>
+          <Pressable 
+            style={styles.drawerTriggerBtn} 
+            onPress={() => setDrawerOpen(true)}
+            hitSlop={10}
+            accessibilityLabel="Open navigation drawer"
+          >
+            <Ionicons name="menu" size={24} color="#f8fafc" />
+          </Pressable>
+
+          <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
+            <Image 
+              source={require('../assets/logo.png')} 
+              style={styles.logoImageSmall} 
+              resizeMode="contain"
+            />
+            <View>
+              <Text style={styles.logoText}>EliteBoards</Text>
+              <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
+            </View>
+          </Pressable>
+        </View>
 
         {/* Right side */}
         <View style={styles.navRight}>
@@ -162,6 +175,13 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
           </View>
         </Pressable>
       )}
+
+      {/* Slide-out Sidebar Drawer */}
+      <SidebarDrawer 
+        visible={drawerOpen} 
+        onClose={() => setDrawerOpen(false)} 
+        unreadCount={unreadCount} 
+      />
     </>
   );
 }
@@ -251,6 +271,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingBottom: 10,
+  },
+  navLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  drawerTriggerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   logoWrap: {
     flexDirection: 'row',

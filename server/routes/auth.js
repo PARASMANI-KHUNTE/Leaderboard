@@ -289,6 +289,54 @@ router.get('/profile', auth, async (req, res) => {
     }
 });
 
+router.put('/profile', auth, async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || typeof name !== 'string' || !name.trim()) {
+            return res.status(400).json({ message: 'Valid display name is required' });
+        }
+        const trimmed = name.trim().slice(0, 50);
+        const { User } = require('../models/User');
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { displayName: trimmed },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const LeaderboardEntry = require('../models/Leaderboard');
+        await LeaderboardEntry.updateMany(
+            { userId: req.user._id },
+            { name: trimmed }
+        );
+
+        res.json({
+            id: user._id,
+            name: user.displayName,
+            email: user.email,
+            picture: user.profilePicture,
+            isAdmin: user.isAdmin,
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.get('/managed-leaderboards', auth, async (req, res) => {
+    try {
+        const Leaderboard = require('../models/LeaderboardCollection');
+        const boards = await Leaderboard.find({ createdBy: req.user._id })
+            .sort({ createdAt: -1 })
+            .lean();
+        res.json(boards);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Delete account (cascading cleanup)
 // Joined leaderboards (distinct boards the user has submissions in)
 router.get('/joined-leaderboards', auth, async (req, res) => {

@@ -38,6 +38,7 @@ type AuthContextValue = {
   notifications: any[];
   unreadCount: number;
   clearUnread: () => void;
+  refreshProfile: () => Promise<void>;
   exchangeCodeAndSignIn: (code: string) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -272,9 +273,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     setUnreadCount(0);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!token) return;
+    try {
+      await fetchProfile(token);
+    } catch (e) {
+      console.warn('Failed to refresh profile', e);
+    }
+  }, [token, fetchProfile]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, token, loading, notifications, unreadCount, clearUnread, exchangeCodeAndSignIn, logout }),
-    [user, token, loading, notifications, unreadCount, clearUnread, exchangeCodeAndSignIn, logout]
+    () => ({ user, token, loading, notifications, unreadCount, clearUnread, refreshProfile, exchangeCodeAndSignIn, logout }),
+    [user, token, loading, notifications, unreadCount, clearUnread, refreshProfile, exchangeCodeAndSignIn, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
