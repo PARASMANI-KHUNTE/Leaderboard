@@ -17,7 +17,7 @@ export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const { isConnected } = useOffline();
-  const { data: leaderboards, isLoading, isError } = useLeaderboards();
+  const { data: leaderboards, isLoading, isError, refetch } = useLeaderboards();
 
   const createLeaderboard = useCreateLeaderboard();
   const toggleLeaderboardStatus = useToggleLeaderboardStatus();
@@ -194,8 +194,16 @@ export default function Home() {
   if (isError && isConnected) {
     return (
       <View style={styles.centerWrap}>
+        <Ionicons name="alert-circle-outline" size={48} color="#fb7185" style={{ marginBottom: 12 }} />
         <Text style={styles.errorTitle}>EliteBoards</Text>
         <Text style={styles.errorSub}>Failed to load leaderboards.</Text>
+        <Pressable 
+          style={[styles.viewMoreBtn, { marginTop: 20, backgroundColor: '#6366f1', borderColor: '#4f46e5', flexDirection: 'row', alignItems: 'center' }]} 
+          onPress={() => refetch()}
+        >
+          <Ionicons name="refresh-outline" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13, letterSpacing: 1 }}>TAP TO RETRY</Text>
+        </Pressable>
       </View>
     );
   }
