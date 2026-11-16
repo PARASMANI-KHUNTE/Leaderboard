@@ -3,7 +3,7 @@ import axios from 'axios';
 import API_URL from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth, useModal } from '../App';
-import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity, Crown, ShieldCheck } from 'lucide-react';
+import { Trophy, Plus, ArrowRight, LayoutGrid, Users, Trash2, Power, PowerOff, Download, Github, Linkedin, Mail, Globe, Zap, Activity, Crown, ShieldCheck, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getSocket } from '../utils/socketSingleton';
 
@@ -327,6 +327,97 @@ const Landing = () => {
                     <ArrowRight className="w-5 h-5 text-indigo-500 group-hover:translate-x-2 transition-transform duration-300" />
                 </Link>
             </div>
+
+            {/* About EliteBoards Section */}
+            <section id="about" className="pt-28 pb-16 border-t border-white/10 mt-20 relative">
+                <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-600/10 blur-[120px] rounded-full -z-10"></div>
+                <div className="text-center mb-16 space-y-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+                        About The Platform
+                    </div>
+                    <h2 className="text-4xl sm:text-6xl font-black text-white uppercase font-mono tracking-tight leading-none">
+                        Built For <span className="text-indigo-500 italic">Competitive Cohorts</span>
+                    </h2>
+                    <p className="text-slate-400 max-w-3xl mx-auto text-base sm:text-lg leading-relaxed">
+                        EliteBoards is an enterprise-grade academic and competitive leaderboard ecosystem. Engineered to eliminate manual spreadsheets, outdated grade sheets, and fraudulent score entries with synchronous sub-10ms rankings and automated document verification.
+                    </p>
+                </div>
+
+                {/* Platform Architectural Pillars */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-indigo-500/30 transition-all">
+                        <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400">
+                            <Zap className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase font-mono">Real-Time Redis Engine</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">
+                            Powered by Upstash Redis Sorted Sets (ZSets) with an $O(\log N)$ composite score engine. Ranks are recalculated instantly across thousands of entries and broadcasted live via Socket.IO rooms.
+                        </p>
+                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-indigo-400">
+                            <span>&bull; Atomic Invalidation</span>
+                            <span>&bull; Race-Condition Proof</span>
+                        </div>
+                    </div>
+
+                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-emerald-500/30 transition-all">
+                        <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
+                            <ShieldCheck className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase font-mono">Document Verification</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">
+                            Prevents fake submissions by validating university student IDs and grade cards. Sharp image compression, Tesseract OCR extraction, and OpenRouter LLM comparison verify legitimate academic standing.
+                        </p>
+                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-emerald-400">
+                            <span>&bull; OCR Extraction</span>
+                            <span>&bull; LLM Hallucination Guard</span>
+                        </div>
+                    </div>
+
+                    <div className="glass p-8 rounded-3xl border-white/5 space-y-4 hover:border-purple-500/30 transition-all">
+                        <div className="w-12 h-12 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400">
+                            <Smartphone className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase font-mono">Cross-Platform Sync</h3>
+                        <p className="text-sm text-slate-400 leading-relaxed">
+                            Full-featured React 19 web app and native Expo SDK 55 mobile app for iOS and Android. Backed by TanStack Query, offline disk caching, and instant Over-The-Air (OTA) updates via Expo EAS.
+                        </p>
+                        <div className="pt-2 flex items-center gap-2 text-xs font-bold font-mono text-purple-400">
+                            <span>&bull; Offline First</span>
+                            <span>&bull; Zero-Downtime OTA</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Production Live Links Callout */}
+                <div className="glass p-8 rounded-3xl border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-slate-900/60 to-indigo-950/40 flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div className="space-y-1 text-center sm:text-left">
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 font-mono">Live In Production</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">Access the Live Production System</p>
+                        <p className="text-xs text-slate-400">Web App: <a href="https://leaderboard-xgi1.onrender.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline font-mono">https://leaderboard-xgi1.onrender.com</a></p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <a
+                            href="https://leaderboard-xgi1.onrender.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-indigo-600/30 active:scale-95 flex items-center gap-2"
+                        >
+                            <Globe className="w-4 h-4" />
+                            Live Web App
+                        </a>
+                        <Link
+                            to="/docs"
+                            className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs uppercase tracking-widest border border-white/10 transition-all active:scale-95"
+                        >
+                            Read Docs
+                        </Link>
+                    </div>
+                </div>
+            </section>
 
             {/* Why EliteBoards Section */}
             <div className="pt-32 pb-10 border-t border-white/10 mt-20">
