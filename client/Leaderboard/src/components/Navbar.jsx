@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { Trophy, ShieldCheck, User, Smartphone, BookOpen } from 'lucide-react';
+import { Trophy, ShieldCheck, User, Smartphone, BookOpen, Info } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const Navbar = () => {
@@ -34,6 +34,11 @@ const Navbar = () => {
                             <Trophy className="w-4 h-4 group-hover:scale-110 transition-transform" />
                             <span className="hidden sm:inline">Leaderboards</span>
                         </Link>
+
+                        <a href="/#about" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
+                            <Info className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            <span className="hidden sm:inline">About</span>
+                        </a>
 
                         <Link to="/app" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
                             <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
