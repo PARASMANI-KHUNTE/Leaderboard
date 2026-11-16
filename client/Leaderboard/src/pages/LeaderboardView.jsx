@@ -286,7 +286,7 @@ const LeaderboardView = () => {
                 </Link>
 
                 <div className="flex items-center gap-3">
-                    {user && (user.isAdmin || user.id === leaderboard.createdBy) && (
+                    {user && (user.isAdmin || String(user.id || user._id) === String(leaderboard.createdBy?._id || leaderboard.createdBy)) && (
                         <>
                             <button
                                 onClick={handleToggleStatus}
@@ -294,10 +294,10 @@ const LeaderboardView = () => {
                                     ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500/20'
                                     : 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
                                     }`}
-                                title={leaderboard.isLive ? "Set Maintenance (Down)" : "Set Live"}
+                                title={leaderboard.isLive ? "Set Maintenance (Pause Submissions)" : "Set Live"}
                             >
                                 {leaderboard.isLive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                                {leaderboard.isLive ? 'SET DOWN' : 'SET LIVE'}
+                                {leaderboard.isLive ? 'PAUSE (MAINTENANCE)' : 'RESUME (SET LIVE)'}
                             </button>
                             <button
                                 onClick={handleDeleteBoard}
@@ -329,7 +329,7 @@ const LeaderboardView = () => {
                         <span className="text-indigo-500 italic">Elite</span> {leaderboard.name}
                     </h1>
                     {!leaderboard.isLive && (
-                        <span className="px-3 py-1 bg-red-500 text-white text-[10px] font-black rounded-lg uppercase tracking-widest">Down</span>
+                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black rounded-lg uppercase tracking-widest">Maintenance</span>
                     )}
                 </div>
                 <p className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto italic">

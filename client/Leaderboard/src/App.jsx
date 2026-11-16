@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import API_URL from './config';
 
@@ -203,7 +203,7 @@ function App() {
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/releases" element={<Releases />} />
                     <Route path="/app" element={<AppPromo />} />
-                    <Route path="/boards" element={<Boards />} />
+                    <Route path="/boards" element={<Navigate to="/" replace />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/docs" element={<Docs />} />
                     <Route path="/about" element={<About />} />

@@ -215,7 +215,17 @@ export function useDeleteLeaderboard() {
 
   return useMutation({
     mutationFn: async (id: string) => (await api.delete(`/api/leaderboards/${id}`)).data,
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData(['leaderboards'], (old: any) => {
+        if (!old) return old;
+        const filterFn = (b: any) => String(b._id || b.id) !== String(deletedId);
+        if (Array.isArray(old)) return old.filter(filterFn);
+        return {
+          ...old,
+          totalBoards: Math.max(0, (old.totalBoards || 1) - 1),
+          leaderboards: (old.leaderboards || []).filter(filterFn),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ['leaderboards'] });
     },
   });

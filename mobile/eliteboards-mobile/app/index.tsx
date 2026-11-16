@@ -97,7 +97,7 @@ export default function Home() {
 
   const renderItem = ({ item }: { item: any }) => {
     const lbId = String(item._id);
-    const isCreator = user ? String(item.createdBy) === String(user.id) : false;
+    const isCreator = user ? String(item.createdBy?._id || item.createdBy) === String(user.id || user._id) : false;
     const canModify = canAct && (user?.isAdmin || isCreator);
 
     return (
