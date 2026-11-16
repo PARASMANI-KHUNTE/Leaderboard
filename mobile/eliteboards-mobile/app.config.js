@@ -20,10 +20,11 @@ function getEnvUrl() {
 }
 
 export default ({ config }) => {
-  const envUrl = getEnvUrl();
+  let envUrl = getEnvUrl();
+  const isProd = process.env.NODE_ENV === 'production' || process.env.EAS_BUILD_PROFILE === 'production';
   
-  if (!envUrl && process.env.NODE_ENV === 'production') {
-    throw new Error('EXPO_PUBLIC_API_URL must be set in .env file for production builds');
+  if (isProd && (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1') || envUrl.includes('10.0.2.2'))) {
+    envUrl = 'https://leaderboard-backend-3pek.onrender.com';
   }
   
   return {
