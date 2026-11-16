@@ -13,6 +13,7 @@ const Leaderboard = require('../models/LeaderboardCollection');
 const reportsRouter = require('../routes/reports');
 const feedbackRouter = require('../routes/feedback');
 const leaderboardRouter = require('../routes/leaderboard');
+const authRouter = require('../routes/auth');
 
 const originalJwtVerify = jwt.verify;
 const originalFindById = User.findById;
@@ -67,6 +68,58 @@ test('getTokenFromRequest prefers bearer token over cookie token', () => {
     const token = authModule.getTokenFromRequest(req);
 
     assert.equal(token, 'bearer-token');
+});
+
+test('getOAuthCallbackURL normalizes Android emulator IP (10.0.2.2) to localhost', () => {
+    const origUrl = process.env.GOOGLE_CALLBACK_URL;
+    delete process.env.GOOGLE_CALLBACK_URL;
+    try {
+        const req = {
+            protocol: 'http',
+            headers: {},
+            get: (header) => (header.toLowerCase() === 'host' ? '10.0.2.2:5000' : null),
+        };
+        const callbackUrl = authRouter.getOAuthCallbackURL(req);
+        assert.equal(callbackUrl, 'http://localhost:5000/auth/google/callback');
+    } finally {
+        if (origUrl) process.env.GOOGLE_CALLBACK_URL = origUrl;
+    }
+});
+
+test('getOAuthCallbackURL enforces https on onrender.com host', () => {
+    const origUrl = process.env.GOOGLE_CALLBACK_URL;
+    delete process.env.GOOGLE_CALLBACK_URL;
+    try {
+        const req = {
+            protocol: 'http',
+            headers: {},
+            get: (header) => (header.toLowerCase() === 'host' ? 'leaderboard-backend-3pek.onrender.com' : null),
+        };
+        const callbackUrl = authRouter.getOAuthCallbackURL(req);
+        assert.equal(callbackUrl, 'https://leaderboard-backend-3pek.onrender.com/auth/google/callback');
+    } finally {
+        if (origUrl) process.env.GOOGLE_CALLBACK_URL = origUrl;
+    }
+});
+
+test('getOAuthCallbackURL respects explicit GOOGLE_CALLBACK_URL env var', () => {
+    const origUrl = process.env.GOOGLE_CALLBACK_URL;
+    process.env.GOOGLE_CALLBACK_URL = 'https://custom.domain.com/auth/google/callback';
+    try {
+        const req = {
+            protocol: 'http',
+            headers: {},
+            get: () => '10.0.2.2:5000',
+        };
+        const callbackUrl = authRouter.getOAuthCallbackURL(req);
+        assert.equal(callbackUrl, 'https://custom.domain.com/auth/google/callback');
+    } finally {
+        if (origUrl) {
+            process.env.GOOGLE_CALLBACK_URL = origUrl;
+        } else {
+            delete process.env.GOOGLE_CALLBACK_URL;
+        }
+    }
 });
 
 test('auth middleware rejects requests without a token', async () => {

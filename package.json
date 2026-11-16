@@ -7,6 +7,7 @@
     "dev:server": "npm --prefix server run dev",
     "dev:web": "npm --prefix client/Leaderboard run dev",
     "dev:mobile": "npm --prefix mobile/eliteboards-mobile run start",
+    "reverse:mobile": "npm --prefix mobile/eliteboards-mobile run reverse",
     "build": "npm run build:web && npm run build:mobile",
     "build:web": "npm --prefix client/Leaderboard run build",
     "build:mobile": "npm --prefix mobile/eliteboards-mobile run build:export",
