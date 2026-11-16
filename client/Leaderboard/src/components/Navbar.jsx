@@ -30,7 +30,7 @@ const Navbar = () => {
                     </Link>
 
                     <div className="flex items-center gap-4">
-                        <Link to="/boards" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
+                        <Link to="/" className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 font-bold text-xs uppercase tracking-widest transition-colors mr-2 group">
                             <Trophy className="w-4 h-4 group-hover:scale-110 transition-transform" />
                             <span className="hidden sm:inline">Leaderboards</span>
                         </Link>

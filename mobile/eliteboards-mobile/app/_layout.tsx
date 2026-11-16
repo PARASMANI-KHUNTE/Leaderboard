@@ -11,7 +11,6 @@ import OfflineProvider from '../src/offline/OfflineProvider';
 import Loading from './loading'; // Import the custom loading screen
 import * as Updates from 'expo-updates';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
 import { io } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +39,6 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isHome = pathname === '/' || pathname === '';
@@ -104,7 +102,8 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
               )}
               <Pressable
                 style={styles.avatarWrap}
-                onPress={() => setMenuOpen(!menuOpen)}
+                onPress={() => router.push('/profile')}
+                accessibilityLabel="Open user profile"
               >
                 {user.picture ? (
                   <Image
@@ -130,51 +129,6 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
           )}
         </View>
       </View>
-
-      {/* User dropdown menu */}
-      {menuOpen && user && (
-        <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
-          <View style={[styles.menuDropdown, { top: insets.top + 56 }]}>
-            <View style={styles.menuHeader}>
-              <Text style={styles.menuName}>{user.name}</Text>
-              <Text style={styles.menuEmail}>{user.email}</Text>
-            </View>
-            <View style={styles.menuDivider} />
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
-                router.push('/profile');
-              }}
-            >
-              <Ionicons name="person-outline" size={18} color="#818cf8" />
-              <Text style={styles.menuItemText}>View Profile</Text>
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={async () => {
-                setMenuOpen(false);
-                // Use the official Render documentation link
-                const webDocsUrl = 'https://leaderboard-xgi1.onrender.com/docs';
-                await WebBrowser.openBrowserAsync(webDocsUrl);
-              }}
-            >
-              <Ionicons name="book-outline" size={18} color="#94a3b8" />
-              <Text style={styles.menuItemText}>Documentation</Text>
-            </Pressable>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuOpen(false);
-                router.push('/feedback');
-              }}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#94a3b8" />
-              <Text style={styles.menuItemText}>Send Feedback</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      )}
 
       {/* Slide-out Sidebar Drawer */}
       <SidebarDrawer 
@@ -382,57 +336,6 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: 'white',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-
-  /* Dropdown menu */
-  menuOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: 100,
-  },
-  menuDropdown: {
-    position: 'absolute',
-    right: 14,
-    width: 220,
-    backgroundColor: '#111a33',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#1f2a4d',
-    overflow: 'hidden',
-    elevation: 10,
-    zIndex: 101,
-  },
-  menuHeader: {
-    padding: 14,
-  },
-  menuName: {
-    color: '#e5e7eb',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  menuEmail: {
-    color: '#64748b',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  menuItemText: {
-    color: '#cbd5e1',
     fontWeight: '700',
     fontSize: 13,
   },

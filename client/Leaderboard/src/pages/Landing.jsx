@@ -293,7 +293,7 @@ const Landing = () => {
                                             <Trophy className="w-5 h-5" />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {(user?.isAdmin || user?.id === lb.createdBy) && (
+                                            {(user?.isAdmin || (user && String(user.id || user._id) === String(lb.createdBy?._id || lb.createdBy))) && (
                                                 <button
                                                     onClick={(e) => handleDelete(lb._id, e)}
                                                     className="p-1.5 bg-red-500/10 rounded-lg text-red-500 hover:bg-red-500/20 transition-all"
@@ -302,7 +302,7 @@ const Landing = () => {
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
-                                            {(user?.isAdmin || user?.id === lb.createdBy) && (
+                                            {(user?.isAdmin || (user && String(user.id || user._id) === String(lb.createdBy?._id || lb.createdBy))) && (
                                                 <button
                                                     onClick={(e) => handleToggleStatus(lb._id, lb.isLive, e)}
                                                     className={`p-1.5 rounded-lg transition-all ${
@@ -316,7 +316,7 @@ const Landing = () => {
                                                 </button>
                                             )}
                                             <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
-                                                lb.isLive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                                lb.isLive ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                             }`}>
                                                 {lb.isLive ? 'Live' : 'Maintenance'}
                                             </span>

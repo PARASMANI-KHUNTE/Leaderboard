@@ -48,9 +48,75 @@ export default function RealtimeProvider({ children }: { children: React.ReactNo
       queryClient.invalidateQueries({ queryKey: ['leaderboards'] });
     };
 
-    const onLeaderboardCreated = () => invalidateLeaderboards();
-    const onLeaderboardDeleted = () => invalidateLeaderboards();
-    const onLeaderboardStatusUpdated = () => invalidateLeaderboards();
+    const onLeaderboardCreated = (newBoard: any) => {
+      if (newBoard && (newBoard._id || newBoard.id)) {
+        queryClient.setQueryData<any>(['leaderboards'], (old: any) => {
+          if (!old) return [newBoard];
+          if (Array.isArray(old)) {
+            if (old.some((b: any) => String(b._id || b.id) === String(newBoard._id || newBoard.id))) return old;
+            return [newBoard, ...old];
+          }
+          if (old.leaderboards && Array.isArray(old.leaderboards)) {
+            if (old.leaderboards.some((b: any) => String(b._id || b.id) === String(newBoard._id || newBoard.id))) return old;
+            return {
+              ...old,
+              totalBoards: (old.totalBoards || 0) + 1,
+              leaderboards: [newBoard, ...old.leaderboards],
+            };
+          }
+          return old;
+        });
+      }
+      invalidateLeaderboards();
+    };
+
+    const onLeaderboardDeleted = (payload: any) => {
+      const targetId = typeof payload === 'object' && payload !== null ? (payload._id || payload.id || payload.leaderboardId) : payload;
+      if (targetId) {
+        queryClient.setQueryData<any>(['leaderboards'], (old: any) => {
+          if (!old) return old;
+          const filterFn = (b: any) => String(b._id || b.id) !== String(targetId);
+          if (Array.isArray(old)) return old.filter(filterFn);
+          if (old.leaderboards && Array.isArray(old.leaderboards)) {
+            return {
+              ...old,
+              totalBoards: Math.max(0, (old.totalBoards || 1) - 1),
+              leaderboards: old.leaderboards.filter(filterFn),
+            };
+          }
+          return old;
+        });
+      }
+      invalidateLeaderboards();
+    };
+
+    const onLeaderboardStatusUpdated = (payload: any) => {
+      const targetId = payload?.id || payload?._id || payload?.leaderboardId;
+      if (targetId) {
+        queryClient.setQueryData<any>(['leaderboards'], (old: any) => {
+          if (!old) return old;
+          const mapFn = (b: any) => {
+            if (String(b._id || b.id) === String(targetId)) {
+              return {
+                ...b,
+                isLive: payload.isLive !== undefined ? payload.isLive : b.isLive,
+                entryCount: payload.entryCount !== undefined ? payload.entryCount : b.entryCount,
+              };
+            }
+            return b;
+          };
+          if (Array.isArray(old)) return old.map(mapFn);
+          if (old.leaderboards && Array.isArray(old.leaderboards)) {
+            return {
+              ...old,
+              leaderboards: old.leaderboards.map(mapFn),
+            };
+          }
+          return old;
+        });
+      }
+      invalidateLeaderboards();
+    };
 
     s.on('connect', handleConnect);
     s.on('leaderboardCreated', onLeaderboardCreated);

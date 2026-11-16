@@ -32,7 +32,7 @@ router.post('/create', auth, validateLeaderboardCreate, async (req, res) => {
         const leaderboard = new Leaderboard({
             name: sanitizedName,
             slug,
-            createdBy: req.user.id,
+            createdBy: req.user._id || req.user.id,
             entryMode,
             fields,
             ranking,
@@ -158,7 +158,7 @@ router.put('/:id/settings', auth, validateObjectId(), validateLeaderboardSetting
         const leaderboard = await Leaderboard.findById(req.params.id);
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
 
-        const isCreator = leaderboard.createdBy.toString() === req.user.id;
+        const isCreator = String(leaderboard.createdBy) === String(req.user._id || req.user.id);
         const isAdmin = req.user.isAdmin;
         if (!isCreator && !isAdmin) {
             return res.status(403).json({ message: 'Not authorized to update this leaderboard' });
@@ -191,7 +191,7 @@ router.post('/toggle-status/:id', auth, async (req, res) => {
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
 
         // Allow creator OR admins
-        const isCreator = leaderboard.createdBy.toString() === req.user.id;
+        const isCreator = String(leaderboard.createdBy) === String(req.user._id || req.user.id);
         const isAdmin = req.user.isAdmin;
 
         if (!isCreator && !isAdmin) {
@@ -221,7 +221,7 @@ router.delete('/:id', auth, async (req, res) => {
         if (!leaderboard) return res.status(404).json({ message: 'Leaderboard not found' });
 
         // Allow creator OR admins
-        const isCreator = leaderboard.createdBy.toString() === req.user.id;
+        const isCreator = String(leaderboard.createdBy) === String(req.user._id || req.user.id);
         const isAdmin = req.user.isAdmin;
 
         if (!isCreator && !isAdmin) {

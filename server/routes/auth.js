@@ -274,6 +274,7 @@ router.get('/profile', auth, async (req, res) => {
 
         res.json({
             id: req.user._id,
+            _id: req.user._id,
             name: req.user.displayName,
             email: req.user.email,
             picture: req.user.profilePicture,

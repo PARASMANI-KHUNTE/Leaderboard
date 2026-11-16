@@ -116,7 +116,7 @@ export default function LeaderboardScreen() {
   const [entryStatus, setEntryStatus] = useState<'idle' | 'loading'>('idle');
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const canAdmin = !!user && (user.isAdmin || String(user.id) === String(effectiveLeaderboard?.createdBy));
+  const canAdmin = !!user && (user.isAdmin || String(user.id || user._id) === String(effectiveLeaderboard?.createdBy?._id || effectiveLeaderboard?.createdBy));
 
   const playPromotedSound = async () => {
     // expo-av requires native modules not available in Expo Go.
@@ -391,7 +391,7 @@ export default function LeaderboardScreen() {
                 <Text style={s.titleName}> {effectiveLeaderboard?.name ?? 'Leaderboard'}</Text>
               </View>
               {!effectiveLeaderboard?.isLive && (
-                <View style={s.downBadge}><Text style={s.downBadgeText}>DOWN</Text></View>
+                <View style={s.downBadge}><Text style={s.downBadgeText}>MAINTENANCE</Text></View>
               )}
               <Text style={s.titleSub}>Live updates of student performance</Text>
               {!isConnected && <Text style={s.offlineText}>Offline: showing cached entries</Text>}
@@ -555,8 +555,8 @@ const s = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'baseline' },
   titleElite: { color: '#a5b4fc', fontSize: 28, fontWeight: '900', fontStyle: 'italic' },
   titleName: { color: 'white', fontSize: 28, fontWeight: '900' },
-  downBadge: { backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, marginTop: 6 },
-  downBadgeText: { color: 'white', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
+  downBadge: { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, marginTop: 6 },
+  downBadgeText: { color: '#fbbf24', fontSize: 9, fontWeight: '900', letterSpacing: 2 },
   titleSub: { color: '#64748b', fontSize: 14, fontStyle: 'italic', marginTop: 6 },
   offlineText: { color: '#fb7185', fontSize: 11, fontWeight: '800', marginTop: 6 },
 
