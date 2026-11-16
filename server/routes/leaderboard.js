@@ -386,7 +386,7 @@ router.post('/submit', auth, validateLeaderboardEntry, async (req, res) => {
 
         // Increment entryCount atomically on the leaderboard collection
         const updatedLeaderboard = await Leaderboard.findByIdAndUpdate(
-            leaderboardId,
+            leaderboard._id,
             { $inc: { entryCount: 1 } },
             { returnDocument: 'after' }
         ).catch(() => null);
@@ -484,11 +484,11 @@ router.delete('/delete/:id', auth, async (req, res) => {
         await LeaderboardEntry.findByIdAndDelete(req.params.id);
 
         // Decrement entryCount atomically
-        const updatedLeaderboard = await Leaderboard.findByIdAndUpdate(
-            leaderboardId,
+        const updatedLeaderboard = leaderboard ? await Leaderboard.findByIdAndUpdate(
+            leaderboard._id,
             { $inc: { entryCount: -1 } },
             { returnDocument: 'after' }
-        ).catch(() => null);
+        ).catch(() => null) : null;
 
         const redisClient = await getRedisClient().catch(() => null);
         if (redisClient) {
