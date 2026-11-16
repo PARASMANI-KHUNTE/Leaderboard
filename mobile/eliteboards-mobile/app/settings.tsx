@@ -6,24 +6,21 @@ import {
     ScrollView, 
     Pressable, 
     Switch, 
-    Alert, 
     ActivityIndicator 
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_URL } from '../src/config/env';
+import { useTheme, ThemePreference } from '../src/theme/ThemeContext';
+import { useThemedDialog } from '../src/components/ThemedDialog';
 
-const THEME_KEY = 'eliteboards_theme_pref';
 const NOTIF_PREF_KEY = 'eliteboards_notif_pref';
 
 export default function Settings() {
-    const router = useRouter();
     const queryClient = useQueryClient();
-
-    // Theme preference: 'dark' | 'light' | 'system'
-    const [theme, setTheme] = useState<'dark' | 'light' | 'system'>('dark');
+    const { themePreference, setThemePreference, colors, isDark } = useTheme();
+    const { showAlert, showConfirm } = useThemedDialog();
     
     // Notification preferences
     const [pushEnabled, setPushEnabled] = useState(true);
@@ -40,9 +37,6 @@ export default function Settings() {
 
     const loadSettings = async () => {
         try {
-            const savedTheme = await AsyncStorage.getItem(THEME_KEY);
-            if (savedTheme) setTheme(savedTheme as any);
-
             const savedNotifs = await AsyncStorage.getItem(NOTIF_PREF_KEY);
             if (savedNotifs) {
                 const parsed = JSON.parse(savedNotifs);
@@ -55,10 +49,13 @@ export default function Settings() {
         }
     };
 
-    const handleSelectTheme = async (newTheme: 'dark' | 'light' | 'system') => {
-        setTheme(newTheme);
-        await AsyncStorage.setItem(THEME_KEY, newTheme);
-        Alert.alert("Theme Selected", `Theme set to ${newTheme.toUpperCase()}. EliteBoards is optimized for high-contrast dark OLED displays.`);
+    const handleSelectTheme = async (newTheme: ThemePreference) => {
+        await setThemePreference(newTheme);
+        showAlert(
+            "Theme Updated", 
+            `Display theme switched to ${newTheme.toUpperCase()}.${newTheme === 'dark' ? ' True black OLED mode is active.' : ''}`,
+            'success'
+        );
     };
 
     const handleSaveNotifs = async (push: boolean, rank: boolean, reaction: boolean) => {
@@ -92,66 +89,56 @@ export default function Settings() {
     };
 
     const handleClearCache = () => {
-        Alert.alert(
+        showConfirm(
             "Clear Local Cache?",
-            "This will purge offline cached rankings and refresh all data on next visit.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Clear Cache",
-                    style: "destructive",
-                    onPress: async () => {
-                        queryClient.clear();
-                        Alert.alert("Cache Cleared", "Local cache has been successfully reset.");
-                    }
-                }
-            ]
+            "This will purge offline cached rankings and refresh all data from the server on your next visit.",
+            async () => {
+                queryClient.clear();
+                showAlert("Cache Cleared", "Local cache has been successfully reset.", "success");
+            },
+            {
+                type: 'danger',
+                confirmText: 'Clear Cache',
+            }
         );
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable style={styles.backBtn} onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={20} color="#ffffff" />
-                </Pressable>
-                <View>
-                    <Text style={styles.title}>Settings</Text>
-                    <Text style={styles.subtitle}>Preferences & System Configuration</Text>
-                </View>
-            </View>
-
-            {/* Theme Preference */}
+        <ScrollView 
+            style={[styles.container, { backgroundColor: colors.bg }]} 
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+        >
+            {/* Theme Preference (Issue 1: Fully functioning dynamic theme switching) */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>DEVICE THEME</Text>
-                <View style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>DEVICE THEME</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     {[
-                        { id: 'dark', label: 'Dark Mode (OLED)', icon: 'moon', desc: 'True black background optimized for battery & contrast' },
+                        { id: 'dark', label: 'Dark Mode (OLED)', icon: 'moon', desc: 'True black background optimized for OLED displays' },
                         { id: 'system', label: 'Match System', icon: 'phone-portrait-outline', desc: 'Sync automatically with OS display appearance' },
-                        { id: 'light', label: 'Light Mode', icon: 'sunny-outline', desc: 'Standard high-key theme for bright environments' },
+                        { id: 'light', label: 'Light Mode', icon: 'sunny-outline', desc: 'Clean high-key theme for bright environments' },
                     ].map((item, idx) => (
                         <Pressable 
                             key={item.id} 
                             style={[
                                 styles.optionRow,
-                                idx !== 0 && styles.rowBorder
+                                idx !== 0 && { borderTopWidth: 1, borderTopColor: colors.borderSubtle }
                             ]}
-                            onPress={() => handleSelectTheme(item.id as any)}
+                            onPress={() => handleSelectTheme(item.id as ThemePreference)}
                         >
                             <View style={styles.optionLeft}>
-                                <View style={styles.iconWrap}>
-                                    <Ionicons name={item.icon as any} size={18} color="#818cf8" />
+                                <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)' }]}>
+                                    <Ionicons name={item.icon as any} size={18} color={colors.primaryLight} />
                                 </View>
-                                <View>
-                                    <Text style={styles.optionLabel}>{item.label}</Text>
-                                    <Text style={styles.optionDesc}>{item.desc}</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.optionLabel, { color: colors.text }]}>{item.label}</Text>
+                                    <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>{item.desc}</Text>
                                 </View>
                             </View>
                             <Ionicons 
-                                name={theme === item.id ? "radio-button-on" : "radio-button-off"} 
+                                name={themePreference === item.id ? "radio-button-on" : "radio-button-off"} 
                                 size={20} 
-                                color={theme === item.id ? "#6366f1" : "#475569"} 
+                                color={themePreference === item.id ? colors.primaryLight : colors.textMuted} 
                             />
                         </Pressable>
                     ))}
@@ -160,60 +147,60 @@ export default function Settings() {
 
             {/* Notification Settings */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>NOTIFICATION PREFERENCES</Text>
-                <View style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>NOTIFICATION PREFERENCES</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.switchRow}>
                         <View style={styles.switchLeft}>
-                            <View style={styles.iconWrap}>
-                                <Ionicons name="notifications" size={18} color="#818cf8" />
+                            <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)' }]}>
+                                <Ionicons name="notifications" size={18} color={colors.primaryLight} />
                             </View>
-                            <View>
-                                <Text style={styles.optionLabel}>Push Notifications</Text>
-                                <Text style={styles.optionDesc}>Receive real-time alerts on mobile device</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.optionLabel, { color: colors.text }]}>Push Notifications</Text>
+                                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>Receive real-time alerts on this device</Text>
                             </View>
                         </View>
                         <Switch 
                             value={pushEnabled} 
                             onValueChange={(val) => handleSaveNotifs(val, rankAlerts, reactionAlerts)}
-                            trackColor={{ false: '#334155', true: '#6366f1' }}
+                            trackColor={{ false: isDark ? '#334155' : '#cbd5e1', true: colors.primary }}
                             thumbColor="#ffffff"
                         />
                     </View>
 
-                    <View style={[styles.switchRow, styles.rowBorder]}>
+                    <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
                         <View style={styles.switchLeft}>
-                            <View style={styles.iconWrap}>
-                                <Ionicons name="trending-up" size={18} color="#10b981" />
+                            <View style={[styles.iconWrap, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
+                                <Ionicons name="trending-up" size={18} color={colors.success} />
                             </View>
-                            <View>
-                                <Text style={styles.optionLabel}>Rank Position Shifts</Text>
-                                <Text style={styles.optionDesc}>Alert when someone overtakes your rank</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.optionLabel, { color: colors.text }]}>Rank Position Shifts</Text>
+                                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>Alert when someone overtakes your rank</Text>
                             </View>
                         </View>
                         <Switch 
                             value={rankAlerts} 
                             disabled={!pushEnabled}
                             onValueChange={(val) => handleSaveNotifs(pushEnabled, val, reactionAlerts)}
-                            trackColor={{ false: '#334155', true: '#6366f1' }}
+                            trackColor={{ false: isDark ? '#334155' : '#cbd5e1', true: colors.primary }}
                             thumbColor="#ffffff"
                         />
                     </View>
 
-                    <View style={[styles.switchRow, styles.rowBorder]}>
+                    <View style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
                         <View style={styles.switchLeft}>
-                            <View style={styles.iconWrap}>
-                                <Ionicons name="heart" size={18} color="#f87171" />
+                            <View style={[styles.iconWrap, { backgroundColor: 'rgba(244, 63, 94, 0.1)' }]}>
+                                <Ionicons name="heart" size={18} color={colors.danger} />
                             </View>
-                            <View>
-                                <Text style={styles.optionLabel}>Score Reactions</Text>
-                                <Text style={styles.optionDesc}>Notify when peers like or applaud your score</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.optionLabel, { color: colors.text }]}>Score Reactions</Text>
+                                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>Notify when peers like your score</Text>
                             </View>
                         </View>
                         <Switch 
                             value={reactionAlerts} 
                             disabled={!pushEnabled}
                             onValueChange={(val) => handleSaveNotifs(pushEnabled, rankAlerts, val)}
-                            trackColor={{ false: '#334155', true: '#6366f1' }}
+                            trackColor={{ false: isDark ? '#334155' : '#cbd5e1', true: colors.primary }}
                             thumbColor="#ffffff"
                         />
                     </View>
@@ -222,25 +209,25 @@ export default function Settings() {
 
             {/* Network & Diagnostics */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>SYSTEM DIAGNOSTICS</Text>
-                <View style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>SYSTEM DIAGNOSTICS</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.diagRow}>
-                        <Text style={styles.diagLabel}>Backend Endpoint</Text>
-                        <Text style={styles.diagValue} numberOfLines={1}>{API_URL}</Text>
+                        <Text style={[styles.diagLabel, { color: colors.textSecondary }]}>Backend Endpoint</Text>
+                        <Text style={[styles.diagValue, { color: colors.text }]} numberOfLines={1}>{API_URL}</Text>
                     </View>
-                    <View style={[styles.diagRow, styles.rowBorder]}>
-                        <Text style={styles.diagLabel}>Server Status</Text>
+                    <View style={[styles.diagRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+                        <Text style={[styles.diagLabel, { color: colors.textSecondary }]}>Server Status</Text>
                         <View style={styles.pingWrap}>
                             {pingStatus && (
                                 <Text style={[
                                     styles.pingText, 
-                                    { color: pingStatus.includes('Connected') ? '#10b981' : '#f87171' }
+                                    { color: pingStatus.includes('Connected') ? colors.success : colors.danger }
                                 ]}>
                                     {pingStatus}
                                 </Text>
                             )}
                             <Pressable 
-                                style={styles.pingBtn} 
+                                style={[styles.pingBtn, { backgroundColor: colors.primary }]} 
                                 onPress={handleTestPing}
                                 disabled={pinging}
                             >
@@ -257,19 +244,19 @@ export default function Settings() {
 
             {/* Cache Management */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>STORAGE</Text>
-                <View style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>STORAGE</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Pressable style={styles.dangerRow} onPress={handleClearCache}>
                         <View style={styles.optionLeft}>
-                            <View style={[styles.iconWrap, { backgroundColor: 'rgba(248, 113, 113, 0.1)' }]}>
-                                <Ionicons name="refresh-circle-outline" size={20} color="#f87171" />
+                            <View style={[styles.iconWrap, { backgroundColor: colors.dangerBg }]}>
+                                <Ionicons name="refresh-circle-outline" size={20} color={colors.danger} />
                             </View>
                             <View>
-                                <Text style={[styles.optionLabel, { color: '#f87171' }]}>Purge Offline Cache</Text>
-                                <Text style={styles.optionDesc}>Reset TanStack local query disk cache</Text>
+                                <Text style={[styles.optionLabel, { color: colors.danger }]}>Purge Offline Cache</Text>
+                                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>Reset TanStack local query disk cache</Text>
                             </View>
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color="#475569" />
+                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </Pressable>
                 </View>
             </View>
@@ -280,80 +267,45 @@ export default function Settings() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
     },
     content: {
-        paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 48,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-        marginBottom: 28,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    title: {
-        color: '#ffffff',
-        fontSize: 22,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-    },
-    subtitle: {
-        color: '#64748b',
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 2,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 40,
     },
     section: {
-        marginBottom: 24,
+        marginBottom: 20,
     },
     sectionTitle: {
-        color: '#64748b',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '900',
         letterSpacing: 2,
-        marginBottom: 10,
+        marginBottom: 8,
         paddingHorizontal: 4,
     },
     card: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: 20,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
         overflow: 'hidden',
     },
     optionRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        padding: 14,
     },
     switchRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-    },
-    rowBorder: {
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.04)',
+        padding: 14,
     },
     optionLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
         flex: 1,
+        paddingRight: 8,
     },
     switchLeft: {
         flexDirection: 'row',
@@ -363,37 +315,32 @@ const styles = StyleSheet.create({
         paddingRight: 12,
     },
     iconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        width: 34,
+        height: 34,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     optionLabel: {
-        color: '#ffffff',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
     },
     optionDesc: {
-        color: '#64748b',
-        fontSize: 11,
+        fontSize: 10,
         marginTop: 2,
     },
     diagRow: {
-        padding: 16,
+        padding: 14,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     diagLabel: {
-        color: '#94a3b8',
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
     },
     diagValue: {
-        color: '#ffffff',
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         fontFamily: 'monospace',
         maxWidth: 180,
@@ -408,10 +355,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     pingBtn: {
-        backgroundColor: '#6366f1',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 10,
+        borderRadius: 8,
     },
     pingBtnText: {
         color: '#ffffff',
@@ -422,6 +368,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        padding: 14,
     },
 });

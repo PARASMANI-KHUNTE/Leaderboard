@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URL } from '../src/config/env';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../src/theme/ThemeContext';
+import { useThemedDialog } from '../src/components/ThemedDialog';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +28,8 @@ export default function Profile() {
     const [joinedBoards, setJoinedBoards] = useState<any[]>([]);
     const [managedBoards, setManagedBoards] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { colors } = useTheme();
+    const { showAlert, showConfirm } = useThemedDialog();
 
     // Name update state
     const [isEditingName, setIsEditingName] = useState(false);
@@ -64,7 +68,7 @@ export default function Profile() {
     const handleSaveName = async () => {
         const trimmed = nameInput.trim();
         if (!trimmed) {
-            Alert.alert("Invalid Name", "Display name cannot be empty.");
+            showAlert("Invalid Name", "Display name cannot be empty.", "warning");
             return;
         }
 
@@ -75,9 +79,9 @@ export default function Profile() {
             });
             await refreshProfile();
             setIsEditingName(false);
-            Alert.alert("Profile Updated", "Your display name has been updated successfully.");
+            showAlert("Profile Updated", "Your display name has been updated successfully.", "success");
         } catch (err: any) {
-            Alert.alert("Update Failed", err.response?.data?.message || "Could not update display name.");
+            showAlert("Update Failed", err.response?.data?.message || "Could not update display name.", "danger");
         } finally {
             setSavingName(false);
         }
@@ -89,72 +93,68 @@ export default function Profile() {
             ? "Putting this board in maintenance mode will pause student submissions."
             : "Making this board live will allow students to submit scores again.";
 
-        Alert.alert(title, msg, [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: currentStatus ? "Pause" : "Set Live",
-                style: currentStatus ? "destructive" : "default",
-                onPress: async () => {
-                    try {
-                        await axios.post(`${API_URL}/api/leaderboards/toggle-status/${boardId}`, {}, {
-                            headers: { Authorization: `Bearer ${token}` }
-                        });
-                        setManagedBoards(prev => prev.map(b => b._id === boardId ? { ...b, isLive: !currentStatus } : b));
-                    } catch (err) {
-                        Alert.alert("Error", "Failed to update leaderboard status.");
-                    }
+        showConfirm(
+            title,
+            msg,
+            async () => {
+                try {
+                    await axios.post(`${API_URL}/api/leaderboards/toggle-status/${boardId}`, {}, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setManagedBoards(prev => prev.map(b => b._id === boardId ? { ...b, isLive: !currentStatus } : b));
+                    showAlert("Status Updated", `Leaderboard is now ${!currentStatus ? 'LIVE' : 'in MAINTENANCE'}.`, "success");
+                } catch (err) {
+                    showAlert("Error", "Failed to update leaderboard status.", "danger");
                 }
+            },
+            {
+                type: currentStatus ? 'warning' : 'info',
+                confirmText: currentStatus ? 'Pause' : 'Set Live',
             }
-        ]);
+        );
     };
 
     const handleDeleteManagedBoard = async (boardId: string, boardName: string) => {
-        Alert.alert(
+        showConfirm(
             "Delete Leaderboard?",
             `Are you sure you want to permanently delete "${boardName}" and all associated entries?`,
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete Board",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await axios.delete(`${API_URL}/api/leaderboards/${boardId}`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                            setManagedBoards(prev => prev.filter(b => b._id !== boardId));
-                            Alert.alert("Deleted", "Leaderboard removed successfully.");
-                        } catch (err) {
-                            Alert.alert("Error", "Failed to delete leaderboard.");
-                        }
-                    }
+            async () => {
+                try {
+                    await axios.delete(`${API_URL}/api/leaderboards/${boardId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setManagedBoards(prev => prev.filter(b => b._id !== boardId));
+                    showAlert("Deleted", "Leaderboard removed successfully.", "success");
+                } catch (err) {
+                    showAlert("Error", "Failed to delete leaderboard.", "danger");
                 }
-            ]
+            },
+            {
+                type: 'danger',
+                confirmText: 'Delete Board',
+            }
         );
     };
 
     const handleDeleteAccount = () => {
-        Alert.alert(
+        showConfirm(
             "Delete Account",
             "Are you absolutely sure? This action is permanent and will delete all your data, scores, and rankings across EliteBoards.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete Permanently", 
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await axios.delete(`${API_URL}/auth/delete-account`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                            await logout();
-                            router.replace('/login');
-                        } catch (err) {
-                            Alert.alert("Error", "Failed to delete account. Please try again later.");
-                        }
-                    }
+            async () => {
+                try {
+                    await axios.delete(`${API_URL}/auth/delete-account`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    await logout();
+                    router.replace('/login');
+                } catch (err) {
+                    showAlert("Error", "Failed to delete account. Please try again later.", "danger");
                 }
-            ]
+            },
+            {
+                type: 'danger',
+                confirmText: 'Delete Permanently',
+            }
         );
     };
 

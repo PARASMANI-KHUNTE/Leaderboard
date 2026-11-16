@@ -1,23 +1,27 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/providers/AuthProvider';
 import { useSubmitFeedback } from '../src/api/hooks';
+import { useTheme } from '../src/theme/ThemeContext';
+import { useThemedDialog } from '../src/components/ThemedDialog';
 
 export default function FeedbackScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
+  const { showAlert } = useThemedDialog();
   const [text, setText] = useState('');
   const submitFeedback = useSubmitFeedback();
 
   const handleSubmit = async () => {
     if (!user) {
-      Alert.alert('Login Required', 'Please login to send feedback.');
+      showAlert('Login Required', 'Please login to send feedback.', 'info');
       router.push('/login');
       return;
     }
@@ -26,51 +30,54 @@ export default function FeedbackScreen() {
     try {
       await submitFeedback.mutateAsync({ text });
       setText('');
-      Alert.alert('Success', 'Feedback sent! Appreciation incoming.', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      showAlert('Feedback Sent', 'Thanks for helping shape the future of EliteBoards.', 'success');
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Failed to send feedback');
+      showAlert('Error', err?.message ?? 'Failed to send feedback', 'danger');
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={s.screen}
+      style={[s.screen, { backgroundColor: colors.bg }]}
     >
-      <ScrollView contentContainerStyle={s.scroll}>
-        <View style={s.header}>
-          <Pressable style={s.backBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color="#64748b" />
-            <Text style={s.backText}>BACK</Text>
-          </Pressable>
-          <View style={s.titleRow}>
-            <View style={s.iconWrap}>
-              <Ionicons name="star" size={24} color="white" />
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <View style={[s.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={s.cardTopHeader}>
+            <View style={[s.iconWrap, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)' }]}>
+              <Ionicons name="chatbubble-ellipses" size={20} color={colors.primaryLight} />
             </View>
-            <View>
-              <Text style={s.title}>Elite Feedback</Text>
-              <Text style={s.subtitle}>SHAPE THE FUTURE OF THIS PLATFORM</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.cardTitle, { color: colors.text }]}>Send Platform Feedback</Text>
+              <Text style={[s.cardSubtitle, { color: colors.textSecondary }]}>Bug reports, suggestions, or university requests</Text>
             </View>
           </View>
-        </View>
 
-        <View style={s.card}>
-          <Text style={s.label}>YOUR MESSAGE</Text>
+          <Text style={[s.label, { color: colors.textMuted }]}>YOUR MESSAGE</Text>
           <TextInput
-            style={s.input}
+            style={[
+              s.input,
+              {
+                backgroundColor: isDark ? 'rgba(2, 6, 23, 0.4)' : 'rgba(0, 0, 0, 0.03)',
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             multiline
             numberOfLines={6}
-            placeholder="What's on your mind? Bug reports, feature requests, or just a generic 'Hello'..."
-            placeholderTextColor="#475569"
+            placeholder="What's on your mind? Tell us what you like or how we can improve EliteBoards..."
+            placeholderTextColor={colors.textMuted}
             value={text}
             onChangeText={setText}
             textAlignVertical="top"
           />
 
           <Pressable
-            style={[s.submitBtn, (!text.trim() || submitFeedback.isPending) && s.btnDisabled]}
+            style={[
+              s.submitBtn, 
+              { backgroundColor: colors.primary },
+              (!text.trim() || submitFeedback.isPending) && s.btnDisabled
+            ]}
             onPress={handleSubmit}
             disabled={!text.trim() || submitFeedback.isPending}
           >
@@ -83,7 +90,7 @@ export default function FeedbackScreen() {
 
           <View style={s.footer}>
             <View style={s.dot} />
-            <Text style={s.footerText}>END-TO-END ENCRYPTED WITH SYSTEM INTEGRITY</Text>
+            <Text style={[s.footerText, { color: colors.textMuted }]}>END-TO-END AUDITED BY SYSTEM ADMINISTRATORS</Text>
             <View style={s.dot} />
           </View>
         </View>
@@ -93,37 +100,81 @@ export default function FeedbackScreen() {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0b1020' },
-  scroll: { flexGrow: 1, paddingBottom: 40 },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 },
-  backArrow: { color: '#64748b', fontSize: 16 },
-  backText: { color: '#64748b', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  iconWrap: {
-    width: 52, height: 52, borderRadius: 16, backgroundColor: '#4f46e5',
-    alignItems: 'center', justifyContent: 'center', elevation: 4,
-  },
-  icon: { fontSize: 24 },
-  title: { color: 'white', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
-  subtitle: { color: '#64748b', fontSize: 8, fontWeight: '900', letterSpacing: 2.5, marginTop: 2 },
-
+  screen: { flex: 1 },
+  scroll: { flexGrow: 1, paddingVertical: 16 },
   card: {
-    marginHorizontal: 16, padding: 20, borderRadius: 24,
-    backgroundColor: '#111a33', borderWidth: 1, borderColor: '#1f2a4d',
+    marginHorizontal: 16,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  label: { color: '#475569', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 10 },
+  cardTopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
   input: {
-    backgroundColor: 'rgba(2, 6, 23, 0.4)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 16, padding: 16, color: 'white', fontSize: 14, minHeight: 140, marginBottom: 20,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 13,
+    minHeight: 120,
+    marginBottom: 18,
   },
   submitBtn: {
-    backgroundColor: '#4f46e5', paddingVertical: 18, borderRadius: 16, alignItems: 'center', elevation: 4,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
   },
-  btnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: 'white', fontWeight: '900', fontSize: 13, letterSpacing: 3 },
-
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 24 },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(99,102,241,0.3)' },
-  footerText: { color: '#475569', fontSize: 8, fontWeight: '800', letterSpacing: 1.5, textAlign: 'center' },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  submitBtnText: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 2,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 18,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(99,102,241,0.3)',
+  },
+  footerText: {
+    fontSize: 7,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
 });

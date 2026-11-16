@@ -1,17 +1,17 @@
 import { Stack, useRouter, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, Pressable, StyleSheet, Image, LogBox } from 'react-native';
 import AuthProvider, { useAuth } from '../src/providers/AuthProvider';
 import RealtimeProvider from '../src/realtime/RealtimeProvider';
 import OfflineProvider from '../src/offline/OfflineProvider';
-import Loading from './loading'; // Import the custom loading screen
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { ThemedDialogProvider } from '../src/components/ThemedDialog';
+import Loading from './loading';
 import * as Updates from 'expo-updates';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { io } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
@@ -28,104 +28,165 @@ if (!isExpoGo) {
   });
 }
 
-// Keep the native splash as a plain handoff, then switch directly to the custom loader.
+// Keep native splash as plain handoff, switch to custom loader
 SplashScreen.preventAutoHideAsync();
 
-import { API_URL } from '../src/config/env';
+function getRouteMetadata(pathname: string) {
+  if (pathname === '/' || pathname === '') {
+    return { isHome: true, title: 'EliteBoards', subtitle: 'PREMIUM RANKINGS' };
+  }
+  if (pathname.startsWith('/profile')) {
+    return { isHome: false, title: 'Profile', subtitle: 'COMPETITOR ACCOUNT' };
+  }
+  if (pathname.startsWith('/settings')) {
+    return { isHome: false, title: 'Settings', subtitle: 'DEVICE & PREFERENCES' };
+  }
+  if (pathname.startsWith('/about')) {
+    return { isHome: false, title: 'About', subtitle: 'PLATFORM OVERVIEW' };
+  }
+  if (pathname.startsWith('/notifications')) {
+    return { isHome: false, title: 'Notifications', subtitle: 'ACTIVITY ALERTS' };
+  }
+  if (pathname.startsWith('/admin')) {
+    return { isHome: false, title: 'Admin Console', subtitle: 'MANAGEMENT HUB' };
+  }
+  if (pathname.startsWith('/feedback')) {
+    return { isHome: false, title: 'Feedback', subtitle: 'REPORTS & REQUESTS' };
+  }
+  if (pathname.startsWith('/login')) {
+    return { isHome: false, title: 'Sign In', subtitle: 'STUDENT ACCESS' };
+  }
+  if (pathname.startsWith('/lb/')) {
+    return { isHome: false, title: 'Leaderboard', subtitle: 'LIVE RANKINGS' };
+  }
+  return { isHome: false, title: 'EliteBoards', subtitle: 'NAVIGATION' };
+}
 
-/* ─── Premium Navbar ─── */
+/* ─── Unified Dynamic Navbar ─── */
 function Navbar({ unreadCount }: { unreadCount: number }) {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { colors, isDark } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const isHome = pathname === '/' || pathname === '';
+  const routeMeta = useMemo(() => getRouteMetadata(pathname), [pathname]);
 
   return (
     <>
-      <View style={[styles.nav, { paddingTop: insets.top + 6 }]}>
-        {/* Left: Hamburger Drawer + Logo */}
+      <View 
+        style={[
+          styles.nav, 
+          { 
+            paddingTop: insets.top + 6,
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          }
+        ]}
+      >
+        {/* Left: Hamburger + Logo (Home) OR Back button + Dynamic Page Title (Subpages) */}
         <View style={styles.navLeft}>
-          <Pressable 
-            style={styles.drawerTriggerBtn} 
-            onPress={() => setDrawerOpen(true)}
-            hitSlop={10}
-            accessibilityLabel="Open navigation drawer"
-          >
-            <Ionicons name="menu" size={24} color="#f8fafc" />
-          </Pressable>
-
-          <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
-            <Image 
-              source={require('../assets/logo.png')} 
-              style={styles.logoImageSmall} 
-              resizeMode="contain"
-            />
-            <View>
-              <Text style={styles.logoText}>EliteBoards</Text>
-              <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
-            </View>
-          </Pressable>
-        </View>
-
-        {/* Right side */}
-        <View style={styles.navRight}>
-          {user && (
-            <Pressable 
-              style={styles.notifBtn} 
-              onPress={() => router.push('/notifications')}
-            >
-              <Ionicons 
-                name={unreadCount > 0 ? "notifications" : "notifications-outline"} 
-                size={22} 
-                color={unreadCount > 0 ? "#818cf8" : "#94a3b8"} 
-              />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </View>
-              )}
-            </Pressable>
-          )}
-
-          {user ? (
+          {routeMeta.isHome ? (
             <>
-              {user.isAdmin && (
-                <Pressable
-                  style={styles.adminBtn}
-                  onPress={() => router.push('/admin')}
-                >
-                  <Text style={styles.adminBtnText}>⚙ ADMIN</Text>
-                </Pressable>
-              )}
-              <Pressable
-                style={styles.avatarWrap}
-                onPress={() => router.push('/profile')}
-                accessibilityLabel="Open user profile"
+              <Pressable 
+                style={[
+                  styles.navActionBtn, 
+                  { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                    borderColor: colors.border,
+                  }
+                ]} 
+                onPress={() => setDrawerOpen(true)}
+                hitSlop={10}
+                accessibilityLabel="Open navigation drawer"
               >
-                {user.picture ? (
-                  <Image
-                    source={{ uri: user.picture }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarPlaceholderText}>
-                      {user.name?.charAt(0)?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-                )}
+                <Ionicons name="menu" size={22} color={colors.text} />
+              </Pressable>
+
+              <Pressable style={styles.logoWrap} onPress={() => router.replace('/')}>
+                <Image 
+                  source={require('../assets/logo.png')} 
+                  style={styles.logoImageSmall} 
+                  resizeMode="contain"
+                />
+                <View>
+                  <Text style={[styles.logoText, { color: colors.text }]}>EliteBoards</Text>
+                  <Text style={styles.logoSub}>PREMIUM RANKINGS</Text>
+                </View>
               </Pressable>
             </>
           ) : (
-            <Pressable
-              style={styles.loginBtn}
-              onPress={() => router.push('/login')}
-            >
-              <Text style={styles.loginBtnText}>Login</Text>
-            </Pressable>
+            <>
+              <Pressable 
+                style={[
+                  styles.navActionBtn, 
+                  { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                    borderColor: colors.border,
+                  }
+                ]} 
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/');
+                  }
+                }}
+                hitSlop={10}
+                accessibilityLabel="Go back"
+              >
+                <Ionicons name="arrow-back" size={20} color={colors.text} />
+              </Pressable>
+
+              <View style={styles.dynamicHeaderWrap}>
+                <Text style={[styles.dynamicHeaderTitle, { color: colors.text }]} numberOfLines={1}>
+                  {routeMeta.title}
+                </Text>
+                <Text style={styles.dynamicHeaderSub} numberOfLines={1}>
+                  {routeMeta.subtitle}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Right side: Notifications bell (No profile avatar here; profile is in the sidebar) */}
+        <View style={styles.navRight}>
+          {user ? (
+            pathname !== '/notifications' && (
+              <Pressable 
+                style={[
+                  styles.notifBtn, 
+                  { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                    borderColor: colors.border,
+                  }
+                ]} 
+                onPress={() => router.push('/notifications')}
+                accessibilityLabel="Notifications"
+              >
+                <Ionicons 
+                  name={unreadCount > 0 ? "notifications" : "notifications-outline"} 
+                  size={20} 
+                  color={unreadCount > 0 ? colors.primaryLight : colors.textSecondary} 
+                />
+                {unreadCount > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+            )
+          ) : (
+            pathname !== '/login' && (
+              <Pressable
+                style={styles.loginBtn}
+                onPress={() => router.push('/login')}
+              >
+                <Text style={styles.loginBtnText}>Login</Text>
+              </Pressable>
+            )
           )}
         </View>
       </View>
@@ -134,14 +195,14 @@ function Navbar({ unreadCount }: { unreadCount: number }) {
       <SidebarDrawer 
         visible={drawerOpen} 
         onClose={() => setDrawerOpen(false)} 
-        unreadCount={unreadCount} 
       />
     </>
   );
 }
 
 function AppContent() {
-  const { user, loading, unreadCount } = useAuth();
+  const { loading, unreadCount } = useAuth();
+  const { colors, isDark } = useTheme();
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
 
   // Immediate splash hide to reveal custom animation
@@ -149,7 +210,7 @@ function AppContent() {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Instant update checker (already here)
+  // Instant update checker
   React.useEffect(() => {
     if (__DEV__) return;
     async function onFetchUpdateAsync() {
@@ -164,21 +225,25 @@ function AppContent() {
     onFetchUpdateAsync();
   }, []);
 
-  // If auth is loading, show the full-screen animated Loading component
   if (loading) {
     return (
       <>
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Loading />
       </>
     );
   }
 
   return (
-    <>
-      <StatusBar style="light" />
+    <View style={[styles.rootContainer, { backgroundColor: colors.bg }]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Navbar unreadCount={unreadCount} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#020617' } }} />
+      <Stack 
+        screenOptions={{ 
+          headerShown: false, 
+          contentStyle: { backgroundColor: colors.bg } 
+        }} 
+      />
 
       {/* Floating Update Notification */}
       {isUpdateAvailable && (
@@ -191,7 +256,7 @@ function AppContent() {
           </Pressable>
         </View>
       )}
-    </>
+    </View>
   );
 }
 
@@ -199,16 +264,20 @@ export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#020617' }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <OfflineProvider>
-              <RealtimeProvider>
-                <AppContent />
-              </RealtimeProvider>
-            </OfflineProvider>
-          </AuthProvider>
+          <ThemeProvider>
+            <ThemedDialogProvider>
+              <AuthProvider>
+                <OfflineProvider>
+                  <RealtimeProvider>
+                    <AppContent />
+                  </RealtimeProvider>
+                </OfflineProvider>
+              </AuthProvider>
+            </ThemedDialogProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -216,30 +285,31 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+  },
   nav: {
-    backgroundColor: 'rgba(2, 6, 23, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingBottom: 10,
+    zIndex: 50,
   },
   navLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
-  drawerTriggerBtn: {
+  navActionBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   logoWrap: {
     flexDirection: 'row',
@@ -251,82 +321,62 @@ const styles = StyleSheet.create({
     height: 32,
   },
   logoText: {
-    color: '#c7d2fe',
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   logoSub: {
-    color: 'rgba(99, 102, 241, 0.5)',
+    color: 'rgba(99, 102, 241, 0.6)',
     fontSize: 7,
     fontWeight: '800',
     letterSpacing: 3,
     marginTop: -1,
   },
+  dynamicHeaderWrap: {
+    justifyContent: 'center',
+    flexShrink: 1,
+  },
+  dynamicHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  dynamicHeaderSub: {
+    color: 'rgba(99, 102, 241, 0.6)',
+    fontSize: 7,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 1,
+  },
   navRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   notifBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
     position: 'relative',
-  },
-  notifIcon: {
-    fontSize: 18,
   },
   notifBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: 3,
+    right: 3,
     backgroundColor: '#4f46e5',
     minWidth: 14,
     height: 14,
     borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#020617',
   },
   notifBadgeText: {
     color: 'white',
     fontSize: 7,
     fontWeight: '900',
-  },
-  adminBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(79, 70, 229, 0.15)',
-  },
-  adminBtnText: {
-    color: '#a5b4fc',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  avatarWrap: {},
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarPlaceholderText: {
-    color: '#94a3b8',
-    fontWeight: '800',
-    fontSize: 14,
   },
   loginBtn: {
     paddingHorizontal: 16,
@@ -336,14 +386,14 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: 'white',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 13,
   },
 
   /* Update Notification */
   updateBannerContainer: {
     position: 'absolute',
-    bottom: 100, // Above the create button/fab
+    bottom: 100,
     left: 20,
     right: 20,
     zIndex: 9999,

@@ -1,21 +1,14 @@
 import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  Pressable,
-  Image,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { useAuth } from '../src/providers/AuthProvider';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useTheme } from '../src/theme/ThemeContext';
 
 export default function NotificationsScreen() {
   const { notifications, clearUnread } = useAuth();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     clearUnread();
@@ -23,53 +16,60 @@ export default function NotificationsScreen() {
 
   const renderIcon = (type: string) => {
     switch (type) {
-      case 'heart': return <Ionicons name="heart" size={24} color="#f43f5e" />;
-      case 'thumbs-down': return <Ionicons name="thumbs-down" size={24} color="#6366f1" />;
-      case 'report': return <Ionicons name="flag" size={24} color="#ef4444" />;
-      case 'system': return <Ionicons name="megaphone" size={24} color="#a5b4fc" />;
-      default: return <Ionicons name="notifications" size={24} color="#94a3b8" />;
+      case 'report':
+        return <Ionicons name="alert-circle" size={20} color={colors.danger} />;
+      case 'feedback':
+        return <Ionicons name="chatbubble-ellipses" size={20} color={colors.primaryLight} />;
+      case 'ban':
+        return <Ionicons name="ban" size={20} color={colors.danger} />;
+      case 'unban':
+        return <Ionicons name="checkmark-circle" size={20} color={colors.success} />;
+      default:
+        return <Ionicons name="notifications" size={20} color={colors.primaryLight} />;
     }
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <Pressable 
-      style={s.notifCard}
-      onPress={() => item.target && router.push(item.target)}
+    <Pressable
+      style={[
+        s.item,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+      onPress={() => {
+        if (item.target) {
+          router.push(item.target);
+        }
+      }}
     >
-      <View style={s.iconWrap}>
+      <View style={[s.iconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }]}>
         {renderIcon(item.type)}
       </View>
       <View style={s.content}>
-        <Text style={s.message}>{item.message}</Text>
-        <Text style={s.time}>
+        <Text style={[s.message, { color: colors.text }]}>{item.message}</Text>
+        <Text style={[s.time, { color: colors.textSecondary }]}>
           {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
-      {item.target && <Ionicons name="chevron-forward" size={20} color="#475569" />}
+      {item.target && <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />}
     </Pressable>
   );
 
   return (
-    <View style={[s.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#94a3b8" />
-        </Pressable>
-        <Text style={s.title}>Notifications</Text>
-        <View style={{ width: 40 }} /> 
-      </View>
-
+    <View style={[s.container, { backgroundColor: colors.bg }]}>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={s.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={s.empty}>
-            <Ionicons name="mail-open-outline" size={64} color="#1e293b" style={{ marginBottom: 16 }} />
-            <Text style={s.emptyText}>All caught up!</Text>
-            <Text style={s.emptySub}>No new activity to show right now.</Text>
+            <Ionicons name="mail-open-outline" size={56} color={colors.textMuted} style={{ marginBottom: 16 }} />
+            <Text style={[s.emptyText, { color: colors.text }]}>All caught up!</Text>
+            <Text style={[s.emptySub, { color: colors.textSecondary }]}>No new notifications to show right now.</Text>
           </View>
         }
       />
@@ -80,95 +80,50 @@ export default function NotificationsScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backText: {
-    color: '#94a3b8',
-    fontSize: 24,
-  },
-  title: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
   },
   list: {
     padding: 16,
-    paddingBottom: 40,
+    flexGrow: 1,
   },
-  notifCard: {
+  item: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    padding: 14,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#1e293b',
   },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: '#1e293b',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
-  },
-  icon: {
-    fontSize: 20,
+    marginRight: 14,
   },
   content: {
     flex: 1,
   },
   message: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
   },
   time: {
-    color: '#64748b',
-    fontSize: 12,
+    fontSize: 10,
     marginTop: 4,
-  },
-  chevron: {
-    color: '#475569',
-    fontSize: 24,
-    marginLeft: 12,
   },
   empty: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    paddingTop: 80,
   },
   emptyText: {
-    color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
   },
   emptySub: {
-    color: '#64748b',
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 12,
+    marginTop: 6,
   },
 });

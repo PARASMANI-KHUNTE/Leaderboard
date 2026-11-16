@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Image } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/providers/AuthProvider';
+import { useThemedDialog } from '../src/components/ThemedDialog';
+import { useTheme } from '../src/theme/ThemeContext';
 
 import { API_URL } from '../src/config/env';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { exchangeCodeAndSignIn } = useAuth();
+  const { colors, isDark } = useTheme();
+  const { showAlert } = useThemedDialog();
   const [loading, setLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -32,25 +36,24 @@ export default function LoginScreen() {
         console.log('[Login] Parsed code from redirect. Length:', typeof code === 'string' ? code.length : 'N/A');
 
         if (!code || typeof code !== 'string') {
-          Alert.alert('Login Error', 'No code was returned from the server.');
+          showAlert('Login Error', 'No authorization code was returned from the server.', 'danger');
           return;
         }
 
         await exchangeCodeAndSignIn(code);
-        // Navigation is handled by AuthProvider state update
       } else if (result.type === 'cancel') {
         console.log('[Login] User cancelled OAuth flow');
       }
     } catch (e: any) {
       console.error('[Login] OAuth error:', e);
-      Alert.alert('Login Failed', e?.message || 'Could not complete Google authentication.');
+      showAlert('Login Failed', e?.message || 'Could not complete Google authentication.', 'danger');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={[s.screen, { backgroundColor: colors.bg, paddingBottom: Math.max(insets.bottom, 24) }]}>
       <View style={s.hero}>
         <Image
           source={require('../assets/logo.png')}

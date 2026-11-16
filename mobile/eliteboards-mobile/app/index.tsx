@@ -21,11 +21,15 @@ import {
   useToggleLeaderboardStatus,
 } from '../src/api/hooks';
 import { readJsonCache, writeJsonCache } from '../src/offline/cache';
+import { useThemedDialog } from '../src/components/ThemedDialog';
+import { useTheme } from '../src/theme/ThemeContext';
 
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
   const { isConnected } = useOffline();
+  const { colors } = useTheme();
+  const { showConfirm, showAlert } = useThemedDialog();
   const { data: leaderboards, isLoading, isError, refetch } = useLeaderboards();
 
   const createLeaderboard = useCreateLeaderboard();
@@ -116,10 +120,12 @@ export default function Home() {
                   style={styles.cardActionBtn}
                   onPress={(e) => {
                     e.stopPropagation?.();
-                    Alert.alert('Delete leaderboard?', 'This permanently removes the leaderboard and all entries.', [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Delete', style: 'destructive', onPress: () => deleteLeaderboard.mutate(lbId) },
-                    ]);
+                    showConfirm(
+                      'Delete Leaderboard?',
+                      'This permanently removes the leaderboard and all entries.',
+                      () => deleteLeaderboard.mutate(lbId),
+                      { type: 'danger', confirmText: 'Delete' }
+                    );
                   }}
                 >
                   <Ionicons name="trash-outline" size={14} color="#fb7185" />
@@ -132,20 +138,21 @@ export default function Home() {
                     const msg = item.isLive
                       ? 'Put this leaderboard into maintenance mode? Submissions will be paused.'
                       : 'Make this leaderboard live? Students will be able to submit scores.';
-                    Alert.alert(`${action} Leaderboard?`, msg, [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: action,
-                        style: item.isLive ? 'destructive' : 'default',
-                        onPress: () => {
-                          toggleLeaderboardStatus.mutate(lbId, {
-                            onError: (err: any) => {
-                              Alert.alert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status');
-                            },
-                          });
-                        },
+                    showConfirm(
+                      `${action} Leaderboard?`,
+                      msg,
+                      () => {
+                        toggleLeaderboardStatus.mutate(lbId, {
+                          onError: (err: any) => {
+                            showAlert('Action Failed', err?.response?.data?.message || err?.message || 'Could not update status', 'danger');
+                          },
+                        });
                       },
-                    ]);
+                      {
+                        type: item.isLive ? 'warning' : 'info',
+                        confirmText: action,
+                      }
+                    );
                   }}
                 >
                   <Ionicons 

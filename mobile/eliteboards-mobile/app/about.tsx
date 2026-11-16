@@ -5,62 +5,54 @@ import {
     StyleSheet, 
     ScrollView, 
     Pressable, 
-    Image, 
-    Linking 
+    Image 
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import { useTheme } from '../src/theme/ThemeContext';
 
 export default function About() {
-    const router = useRouter();
+    const { colors, isDark } = useTheme();
 
     const openUrl = async (url: string) => {
         try {
             await WebBrowser.openBrowserAsync(url);
         } catch (e) {
-            Linking.openURL(url).catch(() => {});
+            console.error('Failed to open URL:', e);
         }
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable style={styles.backBtn} onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={20} color="#ffffff" />
-                </Pressable>
-                <View>
-                    <Text style={styles.title}>About</Text>
-                    <Text style={styles.subtitle}>Platform Overview & System Specs</Text>
-                </View>
-            </View>
-
+        <ScrollView 
+            style={[styles.container, { backgroundColor: colors.bg }]} 
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+        >
             {/* Brand Card */}
-            <View style={styles.brandCard}>
+            <View style={[styles.brandCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Image 
                     source={require('../assets/logo.png')} 
                     style={styles.logoImage} 
                     resizeMode="contain" 
                 />
-                <Text style={styles.brandTitle}>EliteBoards</Text>
-                <Text style={styles.brandTagline}>PREMIUM ACADEMIC & COMPETITIVE RANKINGS</Text>
+                <Text style={[styles.brandTitle, { color: colors.text }]}>EliteBoards</Text>
+                <Text style={[styles.brandTagline, { color: colors.primaryLight }]}>PREMIUM ACADEMIC & COMPETITIVE RANKINGS</Text>
                 
                 <View style={styles.badgeRow}>
                     <View style={styles.badge}>
                         <View style={styles.statusDot} />
                         <Text style={styles.badgeText}>v1.1.0 OTA ACTIVE</Text>
                     </View>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)' }]}>
-                        <Text style={[styles.badgeText, { color: '#818cf8' }]}>EXPO SDK 55</Text>
+                    <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)', borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(79, 70, 229, 0.2)' }]}>
+                        <Text style={[styles.badgeText, { color: colors.primaryLight }]}>EXPO SDK 55</Text>
                     </View>
                 </View>
             </View>
 
             {/* Production Live Links */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>PRODUCTION ACCESS</Text>
-                <View style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>PRODUCTION ACCESS</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Pressable 
                         style={styles.linkRow} 
                         onPress={() => openUrl('https://leaderboard-xgi1.onrender.com')}
@@ -69,98 +61,87 @@ export default function About() {
                             <View style={[styles.iconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
                                 <Ionicons name="globe-outline" size={18} color="#10b981" />
                             </View>
-                            <View>
-                                <Text style={styles.linkLabel}>Live Web Application</Text>
-                                <Text style={styles.linkUrl}>leaderboard-xgi1.onrender.com</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.linkLabel, { color: colors.text }]}>Live Web Platform</Text>
+                                <Text style={[styles.linkUrl, { color: colors.textSecondary }]}>leaderboard-xgi1.onrender.com</Text>
                             </View>
                         </View>
-                        <Ionicons name="open-outline" size={18} color="#94a3b8" />
+                        <Ionicons name="open-outline" size={16} color={colors.textMuted} />
                     </Pressable>
 
                     <Pressable 
-                        style={[styles.linkRow, styles.rowBorder]} 
+                        style={[styles.linkRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]} 
                         onPress={() => openUrl('https://leaderboard-xgi1.onrender.com/docs')}
                     >
                         <View style={styles.linkLeft}>
-                            <View style={[styles.iconWrap, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                                <Ionicons name="book-outline" size={18} color="#818cf8" />
+                            <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)' }]}>
+                                <Ionicons name="book-outline" size={18} color={colors.primaryLight} />
                             </View>
-                            <View>
-                                <Text style={styles.linkLabel}>System Documentation</Text>
-                                <Text style={styles.linkUrl}>Architecture, schemas & API guides</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.linkLabel, { color: colors.text }]}>API & Architecture Docs</Text>
+                                <Text style={[styles.linkUrl, { color: colors.textSecondary }]}>Technical specifications & schema</Text>
                             </View>
                         </View>
-                        <Ionicons name="open-outline" size={18} color="#94a3b8" />
+                        <Ionicons name="open-outline" size={16} color={colors.textMuted} />
                     </Pressable>
-                </View>
-            </View>
 
-            {/* Core Architectural Pillars */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>CORE ARCHITECTURE</Text>
-                <View style={styles.card}>
-                    <View style={styles.featureRow}>
-                        <View style={styles.iconWrap}>
-                            <Ionicons name="flash-outline" size={18} color="#818cf8" />
-                        </View>
-                        <View style={styles.featureTextWrap}>
-                            <Text style={styles.featureTitle}>Upstash Redis Engine</Text>
-                            <Text style={styles.featureDesc}>
-                                Sub-10ms composite ranking engine with O(log N) Sorted Sets (ZSets) and real-time Socket.IO room invalidation.
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={[styles.featureRow, styles.rowBorder]}>
-                        <View style={[styles.iconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                            <Ionicons name="shield-checkmark-outline" size={18} color="#10b981" />
-                        </View>
-                        <View style={styles.featureTextWrap}>
-                            <Text style={styles.featureTitle}>OCR Document Verification</Text>
-                            <Text style={styles.featureDesc}>
-                                Sharp image processing + Tesseract OCR extraction prevents fraudulent submissions and validates university credentials.
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={[styles.featureRow, styles.rowBorder]}>
-                        <View style={[styles.iconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.1)' }]}>
-                            <Ionicons name="phone-portrait-outline" size={18} color="#a855f7" />
-                        </View>
-                        <View style={styles.featureTextWrap}>
-                            <Text style={styles.featureTitle}>Cross-Platform Parity</Text>
-                            <Text style={styles.featureDesc}>
-                                Built with React Native & Expo EAS for zero-downtime over-the-air updates, offline persistence, and seamless mobile UX.
-                            </Text>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* Developer & Credits */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>DEVELOPER</Text>
-                <View style={styles.card}>
                     <Pressable 
-                        style={styles.linkRow} 
-                        onPress={() => openUrl('https://github.com/PARASMANI-KHUNTE')}
+                        style={[styles.linkRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]} 
+                        onPress={() => openUrl('https://github.com/PARASMANI-KHUNTE/Leaderboard')}
                     >
                         <View style={styles.linkLeft}>
-                            <View style={styles.iconWrap}>
-                                <Ionicons name="logo-github" size={18} color="#ffffff" />
+                            <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                                <Ionicons name="logo-github" size={18} color={colors.text} />
                             </View>
-                            <View>
-                                <Text style={styles.linkLabel}>Parasmani Khunte</Text>
-                                <Text style={styles.linkUrl}>github.com/PARASMANI-KHUNTE</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.linkLabel, { color: colors.text }]}>GitHub Repository</Text>
+                                <Text style={[styles.linkUrl, { color: colors.textSecondary }]}>Source code, PRs, and security scans</Text>
                             </View>
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color="#475569" />
+                        <Ionicons name="open-outline" size={16} color={colors.textMuted} />
                     </Pressable>
                 </View>
             </View>
 
+            {/* Architecture Highlights */}
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>CORE ARCHITECTURE</Text>
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.featureRow}>
+                        <View style={[styles.iconWrap, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
+                            <Ionicons name="flash-outline" size={18} color="#eab308" />
+                        </View>
+                        <View style={styles.featureTextWrap}>
+                            <Text style={[styles.featureTitle, { color: colors.text }]}>Realtime WebSocket Sync</Text>
+                            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Sub-millisecond score updates and reactive cache invalidation powered by Socket.IO singletons.</Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.featureRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+                        <View style={[styles.iconWrap, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)' }]}>
+                            <Ionicons name="shield-checkmark-outline" size={18} color={colors.primaryLight} />
+                        </View>
+                        <View style={styles.featureTextWrap}>
+                            <Text style={[styles.featureTitle, { color: colors.text }]}>AI Academic Verification</Text>
+                            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Automated grade card validation utilizing Sharp image compression, Tesseract OCR, and OpenRouter LLMs.</Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.featureRow, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+                        <View style={[styles.iconWrap, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                            <Ionicons name="cloud-offline-outline" size={18} color="#ef4444" />
+                        </View>
+                        <View style={styles.featureTextWrap}>
+                            <Text style={[styles.featureTitle, { color: colors.text }]}>Offline Persistence</Text>
+                            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>Cached ranking data powered by TanStack Query and AsyncStorage with automatic reconnect rehydration.</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* Footer */}
             <View style={styles.footer}>
-                <Text style={styles.copyright}>&copy; {new Date().getFullYear()} EliteBoards. All rights reserved.</Text>
+                <Text style={[styles.copyright, { color: colors.textMuted }]}>© 2026 EliteBoards Team • Built for Universities</Text>
             </View>
         </ScrollView>
     );
@@ -169,64 +150,31 @@ export default function About() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
     },
     content: {
-        paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 48,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 40,
     },
-    header: {
-        flexDirection: 'row',
+    brandCard: {
         alignItems: 'center',
-        gap: 16,
-        marginBottom: 24,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        padding: 20,
+        marginBottom: 20,
     },
-    title: {
-        color: '#ffffff',
+    logoImage: {
+        width: 56,
+        height: 56,
+        marginBottom: 10,
+    },
+    brandTitle: {
         fontSize: 22,
         fontWeight: '900',
         letterSpacing: -0.5,
     },
-    subtitle: {
-        color: '#64748b',
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 2,
-    },
-    brandCard: {
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
-        padding: 24,
-        marginBottom: 24,
-    },
-    logoImage: {
-        width: 64,
-        height: 64,
-        marginBottom: 12,
-    },
-    brandTitle: {
-        color: '#ffffff',
-        fontSize: 24,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-    },
     brandTagline: {
-        color: '#818cf8',
-        fontSize: 9,
+        fontSize: 8,
         fontWeight: '900',
         letterSpacing: 2,
         marginTop: 4,
@@ -234,7 +182,7 @@ const styles = StyleSheet.create({
     badgeRow: {
         flexDirection: 'row',
         gap: 8,
-        marginTop: 16,
+        marginTop: 14,
     },
     badge: {
         flexDirection: 'row',
@@ -255,57 +203,48 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         color: '#10b981',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '900',
         letterSpacing: 1,
     },
     section: {
-        marginBottom: 24,
+        marginBottom: 20,
     },
     sectionTitle: {
-        color: '#64748b',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '900',
         letterSpacing: 2,
-        marginBottom: 10,
+        marginBottom: 8,
         paddingHorizontal: 4,
     },
     card: {
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        borderRadius: 20,
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
         overflow: 'hidden',
     },
     linkRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
+        padding: 14,
     },
     featureRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        padding: 16,
-        gap: 14,
+        padding: 14,
+        gap: 12,
     },
     featureTextWrap: {
         flex: 1,
     },
     featureTitle: {
-        color: '#ffffff',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
-        marginBottom: 4,
+        marginBottom: 3,
     },
     featureDesc: {
-        color: '#94a3b8',
-        fontSize: 12,
-        lineHeight: 18,
-    },
-    rowBorder: {
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.04)',
+        fontSize: 11,
+        lineHeight: 16,
     },
     linkLeft: {
         flexDirection: 'row',
@@ -314,30 +253,26 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     iconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        width: 34,
+        height: 34,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
     linkLabel: {
-        color: '#ffffff',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
     },
     linkUrl: {
-        color: '#64748b',
-        fontSize: 11,
-        marginTop: 2,
+        fontSize: 10,
+        marginTop: 1,
     },
     footer: {
         alignItems: 'center',
-        marginTop: 12,
+        marginTop: 8,
     },
     copyright: {
-        color: '#334155',
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '700',
     },
 });
